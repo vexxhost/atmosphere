@@ -1,0 +1,127 @@
+# Shared test cases for image resolution. They are run by the Go tests in
+# internal/releasemanifest and by the Python tests for the
+# vexxhost.atmosphere.resolve_images filter, so both implementations must
+# agree on every case.
+cases:
+  - name: no prefix and no rules returns the canonical reference
+    input: quay.io/ceph/ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+    expected: quay.io/ceph/ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+
+  - name: prefix is applied to a canonical reference
+    prefix: harbor.example.com/
+    input: ghcr.io/vexxhost/nova:main@sha256:3095eaa3964b6b37b55d9de8681fb3d06cc247da1cd402fcdf81a7abbfc2496b
+    expected: harbor.example.com/ghcr.io/vexxhost/nova:main@sha256:3095eaa3964b6b37b55d9de8681fb3d06cc247da1cd402fcdf81a7abbfc2496b
+
+  - name: prefixed source value is unchanged when only a prefix is set
+    prefix: harbor.example.com/
+    strip_prefix: true
+    input: harbor.example.com/docker.io/library/haproxy:2.5
+    expected: harbor.example.com/docker.io/library/haproxy:2.5
+
+  - name: source value without the prefix is left unchanged when no rule matches
+    prefix: harbor.example.com/
+    strip_prefix: true
+    mirrors:
+      - source: quay.io
+        mirror: mirror.example.com/quay
+    input: docker.io/library/haproxy:2.5
+    expected: docker.io/library/haproxy:2.5
+
+  - name: source values pass through untouched when there are no rules
+    prefix: harbor.example.com/
+    strip_prefix: true
+    input: haproxy:2.5
+    expected: haproxy:2.5
+
+  - name: prefix without a trailing slash is concatenated as-is
+    prefix: harbor.example.com/proxy-
+    strip_prefix: true
+    input: harbor.example.com/proxy-quay.io/prometheus/alertmanager:v0.27.0
+    expected: harbor.example.com/proxy-quay.io/prometheus/alertmanager:v0.27.0
+
+  - name: registry rule replaces the registry host
+    mirrors:
+      - source: quay.io
+        mirror: harbor.example.com/quay-proxy
+    input: quay.io/ceph/ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+    expected: harbor.example.com/quay-proxy/ceph/ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+
+  - name: rule wins over the prefix
+    prefix: harbor.example.com/
+    mirrors:
+      - source: docker.io
+        mirror: harbor.example.com/dockerhub-proxy
+    input: docker.io/library/memcached:1.6.26
+    expected: harbor.example.com/dockerhub-proxy/library/memcached:1.6.26
+
+  - name: prefix still applies to images that no rule matches
+    prefix: harbor.example.com/
+    mirrors:
+      - source: docker.io
+        mirror: harbor.example.com/dockerhub-proxy
+    input: quay.io/prometheus/alertmanager:v0.27.0
+    expected: harbor.example.com/quay.io/prometheus/alertmanager:v0.27.0
+
+  - name: rule matches a source value after the prefix is stripped
+    prefix: harbor.example.com/
+    strip_prefix: true
+    mirrors:
+      - source: quay.io
+        mirror: mirror.example.com/quay
+    input: harbor.example.com/quay.io/ceph/ceph:v18.2.7
+    expected: mirror.example.com/quay/ceph/ceph:v18.2.7
+
+  - name: namespace rule
+    mirrors:
+      - source: ghcr.io/vexxhost
+        mirror: registry.internal/atmosphere/vexxhost
+    input: ghcr.io/vexxhost/keystone:main@sha256:cc47ed828419329971fbebd84b766b721821616ccc9f543cb5b603dc85ecf7f1
+    expected: registry.internal/atmosphere/vexxhost/keystone:main@sha256:cc47ed828419329971fbebd84b766b721821616ccc9f543cb5b603dc85ecf7f1
+
+  - name: most specific rule wins
+    mirrors:
+      - source: quay.io
+        mirror: registry.internal/atmosphere/quay.io
+      - source: quay.io/ceph/ceph
+        mirror: registry.internal/atmosphere/quay.io--ceph--ceph
+    input: quay.io/ceph/ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+    expected: registry.internal/atmosphere/quay.io--ceph--ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+
+  - name: rules only match whole path components
+    mirrors:
+      - source: quay.io/ceph
+        mirror: registry.internal/ceph
+    input: quay.io/cephcsi/cephcsi:v3.11.0
+    expected: quay.io/cephcsi/cephcsi:v3.11.0
+
+  - name: single repository rule keeps tag and digest
+    mirrors:
+      - source: quay.io/ceph/ceph
+        mirror: registry.internal/atmosphere
+    input: quay.io/ceph/ceph:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+    expected: registry.internal/atmosphere:v18.2.7@sha256:1b9158ce28975f95def6a0ad459fa19f1336506074267a4b47c1bd914a00fec0
+
+  - name: digest-only reference
+    mirrors:
+      - source: ghcr.io
+        mirror: registry.internal/atmosphere/ghcr.io
+    input: ghcr.io/carvel-dev/secretgen-controller@sha256:59ec05ce5847bfd70c8e04f08b5195e918c8f6fbb947ffc91b456494a2958fd5
+    expected: registry.internal/atmosphere/ghcr.io/carvel-dev/secretgen-controller@sha256:59ec05ce5847bfd70c8e04f08b5195e918c8f6fbb947ffc91b456494a2958fd5
+
+  - name: registry with a port
+    mirrors:
+      - source: registry.k8s.io
+        mirror: localhost:5000/atmosphere/registry.k8s.io
+    input: registry.k8s.io/kube-apiserver:v1.28.13
+    expected: localhost:5000/atmosphere/registry.k8s.io/kube-apiserver:v1.28.13
+
+  - name: reference without a registry is rejected
+    input: library/haproxy:2.5
+    error: true
+
+  - name: mirror rule with a trailing slash is rejected
+    mirrors:
+      - source: quay.io/
+        mirror: registry.internal/quay.io
+    input: quay.io/ceph/ceph:v18.2.7
+    error: true

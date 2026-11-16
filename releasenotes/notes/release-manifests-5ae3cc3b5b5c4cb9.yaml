@@ -1,0 +1,58 @@
+---
+features:
+  - |
+    Every commit on ``main`` and the ``stable/*`` branches now publishes a
+    release manifest, a digest-pinned list of every image Atmosphere deploys,
+    to ``ghcr.io/vexxhost/atmosphere-release`` (tagged with the commit SHA and
+    the branch). Releases promote the manifest of the released commit to the
+    release version instead of resolving image tags again, attach it to the
+    GitHub release, and pin the images of the Ansible collection to the same
+    digests.
+  - |
+    Set ``atmosphere_release_manifest`` to a release manifest, either an OCI
+    reference such as ``ghcr.io/vexxhost/atmosphere-release:v7.9.0`` or a file
+    path, to deploy exactly the images of that manifest. OCI references are
+    read through ``atmosphere_image_mirrors`` and ``atmosphere_image_prefix``,
+    and ``atmosphere_release_manifest_ca_file`` adds a private CA to trust.
+  - |
+    The release manifest published for a merged pull request is the one Zuul
+    generated and deployed when testing it, found through the Zuul API with
+    ``atmosphere-release publish``, unless the image list changed in between.
+    Manifests that were not tested are annotated with
+    ``com.vexxhost.atmosphere.tested: "false"``. Publishing is reproducible:
+    the same manifest always has the same artifact digest.
+  - |
+    The new ``atmosphere_image_mirrors`` variable redirects images to other
+    locations. Each rule maps a ``source`` registry, namespace or repository
+    to a ``mirror`` location, the most specific rule wins, and
+    ``atmosphere_image_prefix`` still applies to images that no rule matches.
+    This supports registry caches whose proxy projects are not named after
+    the upstream registries.
+  - |
+    The new ``atmosphere-release`` command (``cmd/atmosphere-release``,
+    attached to every GitHub release for Linux and macOS) generates,
+    publishes, compares (``diff``) and checks release manifests, and mirrors
+    a release to another registry or, for disconnected environments, to a
+    directory and back. Mirroring copies complete images so their digests do
+    not change, verifies every digest, supports ``nested``, ``flat`` and
+    ``single-repo`` registry layouts and writes the
+    ``atmosphere_release_manifest`` and ``atmosphere_image_mirrors`` settings
+    for the mirror.
+upgrade:
+  - |
+    Deployments that do not set the new variables are unaffected: the
+    resolved images, including those using ``atmosphere_image_prefix`` and
+    ``atmosphere_image_overrides``, are identical to previous releases.
+deprecations:
+  - |
+    The ``image_manifest`` role and playbook are deprecated in favour of
+    ``atmosphere-release mirror`` and will be removed in a future release.
+    Its registry rewrite keeps only the last path component of each image,
+    which maps different images such as ``rook/ceph`` and ``ceph/ceph`` to
+    the same name.
+other:
+  - |
+    The ``cmd/pinimages`` tool has been replaced by
+    ``atmosphere-release generate --write-vars``, which also pins images whose
+    tag is templated from a release variable (such as Ceph) and fails instead
+    of silently skipping images it cannot resolve.

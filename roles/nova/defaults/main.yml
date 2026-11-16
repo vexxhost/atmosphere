@@ -20,6 +20,11 @@ nova_helm_release_namespace: openstack
 nova_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 nova_helm_values: {}
 
+# Time to wait for Helm operations to complete, using Go duration syntax.
+#
+# nova_helm_timeout: 10m0s
+nova_helm_timeout: 5m0s
+
 # Private SSH key used for cold & live migration
 nova_ssh_key: "{{ undef(hint='You must specifiy an SSH key for Nova.') }}"
 

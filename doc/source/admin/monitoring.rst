@@ -1442,29 +1442,239 @@ confirm the issue is both sustained and ongoing. At this burn rate, the entire
 6. Review recent deployments or configuration changes that might have
    introduced the issue.
 
+``NginxIngressTLSCertificateExpiringCritical``
+==============================================
+
+This alert fires when a TLS certificate that NGINX Ingress loads from a
+Kubernetes Secret expires in less than 7 days. Once the certificate expires,
+clients connecting to any host that uses the Secret fail TLS verification, so
+the alert pages regardless of business hours. The alert uses the earliest
+expiry reported by any NGINX Ingress controller and produces one alert per
+Secret, so a wildcard certificate shared by many hosts raises a single alert.
+It ignores the controller's built-in default certificate. While this alert
+fires, Alertmanager suppresses ``NginxIngressTLSCertificateExpiringSoon`` for
+the same Secret.
+
+**Likely Root Causes**
+
+- cert-manager can't renew the certificate because an ACME order or challenge
+  is failing, DNS records are wrong, the issuer's credentials expired, or the
+  issuer hit a rate limit
+- cert-manager doesn't manage the certificate, for example an existing wildcard
+  certificate configured with ``openstack_helm_ingress_secret_name``, and
+  nobody replaced it
+- cert-manager renewed the Secret, but one or more NGINX Ingress controllers
+  still serve the previous certificate
+- The Ingress references a different Secret than the one cert-manager renews
+
+**Diagnostic and Remediation Steps**
+
+1. Use the ``namespace`` and ``secret_name`` alert labels to list the hosts
+   that use the Secret and the days remaining on each NGINX Ingress controller:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       '(nginx_ingress_controller_ssl_expire_time_seconds{namespace="<namespace>",secret_name="<secret-name>"} - time()) / 86400'
+
+2. Check the expiry date of the certificate stored in the Secret:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get secret <secret-name> -o jsonpath='{.data.tls\.crt}' | \
+       base64 -d | openssl x509 -noout -subject -issuer -enddate
+
+   If the Secret already holds a renewed certificate, skip to step 5.
+
+3. If cert-manager manages the Secret, find the matching ``Certificate`` (the
+   ``SECRET`` column) and check why renewal failed:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get certificates -o wide
+     kubectl -n <namespace> describe certificate <certificate-name>
+     kubectl -n <namespace> get certificaterequests,orders,challenges
+     kubectl get clusterissuers
+     kubectl -n cert-manager logs deploy/cert-manager --since=1h | grep <certificate-name>
+
+   Fix the failing issuer, DNS record, or credentials. cert-manager retries
+   automatically with a backoff. To retry immediately, run
+   ``cmctl renew -n <namespace> <certificate-name>``.
+
+4. If cert-manager doesn't manage the Secret, obtain a renewed certificate and
+   replace the Secret contents, as described in :doc:`../deploy/certificates`:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> create secret tls <secret-name> \
+       --cert=/path/to/tls.crt --key=/path/to/tls.key \
+       --dry-run=client -o yaml | kubectl apply -f -
+
+   Repeat this for every namespace that holds a copy of the Secret.
+
+5. Confirm that every NGINX Ingress controller serves the renewed certificate.
+   The controllers run on the host network of each control plane node, so check
+   each node with the hostname from step 1:
+
+   .. code-block:: console
+
+     openssl s_client -connect <node-ip>:443 -servername <host> </dev/null 2>/dev/null | \
+       openssl x509 -noout -enddate
+
+   If a controller still serves the previous certificate, check its logs for
+   reload errors and restart it:
+
+   .. code-block:: console
+
+     kubectl -n ingress-nginx logs ds/ingress-nginx-controller --tail=200 | grep -i -E 'certificate|reload'
+     kubectl -n ingress-nginx rollout restart ds/ingress-nginx-controller
+
+``NginxIngressTLSCertificateExpiringSoon``
+==========================================
+
+This alert fires when a TLS certificate that NGINX Ingress loads from a
+Kubernetes Secret expires in less than 21 days. cert-manager renews a
+certificate when a third of its lifetime remains, which is 30 days for a
+90-day certificate, so this alert means that renewal has stalled for more than
+a week or that nobody manages the certificate. The alert uses the earliest
+expiry reported by any NGINX Ingress controller, produces one alert per
+Secret, and ignores the controller's built-in default certificate. Once the
+certificate reaches 7 days, ``NginxIngressTLSCertificateExpiringCritical``
+pages and Alertmanager suppresses this alert.
+
+.. note::
+
+   Certificate authorities are moving to shorter lifetimes. With 64-day
+   certificates, cert-manager renews at about 21 days remaining, and with
+   45-day certificates at 15 days remaining, so this alert may fire during
+   normal renewals.
+
+**Likely Root Causes**
+
+- cert-manager renewal attempts are failing because of an ACME challenge, DNS,
+  issuer credentials, or rate limits
+- cert-manager doesn't manage the certificate, for example an existing wildcard
+  certificate configured with ``openstack_helm_ingress_secret_name``, and it
+  needs manual replacement
+- cert-manager renewed the Secret, but one or more NGINX Ingress controllers
+  still serve the previous certificate
+
+**Diagnostic and Remediation Steps**
+
+Resolve this alert before the certificate reaches 7 days remaining. The steps
+match those for ``NginxIngressTLSCertificateExpiringCritical``:
+
+1. Use the ``namespace`` and ``secret_name`` alert labels to list the hosts
+   that use the Secret and the days remaining on each NGINX Ingress controller:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       '(nginx_ingress_controller_ssl_expire_time_seconds{namespace="<namespace>",secret_name="<secret-name>"} - time()) / 86400'
+
+2. Check the expiry date of the certificate stored in the Secret. If it
+   already holds a renewed certificate, confirm that every controller serves it
+   and restart any that don't, as described in step 5 of
+   ``NginxIngressTLSCertificateExpiringCritical``:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get secret <secret-name> -o jsonpath='{.data.tls\.crt}' | \
+       base64 -d | openssl x509 -noout -subject -issuer -enddate
+
+3. If cert-manager manages the Secret, check the ``Certificate`` status and the
+   cert-manager logs for the failing renewal, and fix the issuer, DNS record,
+   or credentials:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get certificates -o wide
+     kubectl -n <namespace> describe certificate <certificate-name>
+     kubectl -n <namespace> get certificaterequests,orders,challenges
+     kubectl -n cert-manager logs deploy/cert-manager --since=1h | grep <certificate-name>
+
+4. If cert-manager doesn't manage the Secret, schedule the replacement of the
+   certificate in every namespace that holds a copy, as described in
+   :doc:`../deploy/certificates`.
+
 ``NodeNetworkMulticast``
 ========================
 
-This alert fires when a node receives large volumes of multicast traffic, which
-can indicate an incorrectly configured network or a malicious actor.
+This P5 capacity-planning alert fires when an interface receives more than
+1,000 multicast or broadcast packets per second for 24 hours. The underlying
+``node_network_receive_multicast_total`` counter is driver-provided and can
+include layer-2 broadcast traffic such as ARP. The alert therefore does not, by
+itself, indicate a multicast application, a network attack, or user-visible
+impact.
 
-This can result in high CPU usage on the node and can cause the node to become
-unresponsive. It can also cause a high amount of software interrupts on the
-node.
+Common causes include expected multicast protocols, ARP or neighbour discovery
+on a shared provider network, broadcast unknown multicast (BUM) replication in
+an EVPN/VXLAN fabric, a layer-2 loop, or a misconfigured or malicious sender.
+Shared OpenStack provider networks can amplify normal gateway ARP requests to
+every compute host, so the same traffic can produce one alert per node without
+overloading any node.
 
-To find the root cause of this issue, use the following commands:
+This alert is informational and must not be escalated based on packet rate
+alone. Page-worthy impact is covered by the softnet backlog and drop alerts,
+network interface errors, and node CPU alerts. Investigate during business
+hours to establish a baseline and determine whether capacity work is needed.
 
-.. code-block:: console
+1. Identify the affected interface and confirm its packet and error counters:
 
-  iftop -ni $DEV -f 'multicast and not broadcast'
+   .. code-block:: console
 
-With this command, you can see which IP addresses send the multicast traffic.
-Once you have the IP address, use the following command to find the server
-behind it:
+     DEV=<interface-from-alert>
+     ip -s link show dev "$DEV"
+     ethtool -S "$DEV" | grep -Ei 'multicast|broadcast|drop|error|miss'
 
-.. code-block:: console
+2. Capture a bounded sample before deciding that the traffic is multicast.
+   Preserve Ethernet headers so that broadcast ARP can be distinguished from
+   IPv4 or IPv6 multicast:
 
-  openstack server list --all-projects --long -n --ip $IP
+   .. code-block:: console
+
+     timeout 30 tcpdump -nn -e -i "$DEV" 'ether multicast' -c 5000
+
+3. Check whether the node is experiencing packet-processing impact. A high
+   packet rate without increasing drops, ``time_squeeze``, or sustained CPU
+   pressure is a capacity signal rather than an incident:
+
+   .. code-block:: console
+
+     mpstat -P ALL 1 10
+     watch -n 1 cat /proc/net/softnet_stat
+     ip -s link show dev "$DEV"
+
+4. If the capture shows tenant traffic, map the source IP or MAC address to an
+   OpenStack port and server:
+
+   .. code-block:: console
+
+     openstack port list --all-projects --mac-address <source-mac>
+     openstack server list --all-projects --long --ip <source-ip>
+
+5. If the capture shows ARP or neighbour discovery from a gateway, inspect the
+   gateway neighbour table and the VXLAN flood list. Failed or incomplete
+   neighbours across unallocated addresses commonly indicate Internet scans
+   causing otherwise normal resolution attempts:
+
+   .. code-block:: console
+
+     ip neigh show dev <provider-bridge> nud failed
+     ip neigh show dev <provider-bridge> nud incomplete
+     bridge -d link show dev <vxlan-interface>
+     bridge fdb show dev <vxlan-interface>
+
+6. Compare the measured rate with node CPU, softnet, interface-drop, and VXLAN
+   counters. If there is no impact, record the source and baseline; do not
+   change neighbour retry settings or apply storm control solely to clear this
+   alert. If impact is present, stop a loop or malicious sender when identified,
+   or filter unwanted traffic at the ingress gateway after verifying that the
+   policy cannot block dynamically allocated OpenStack addresses. Longer-term
+   EVPN ARP/ND suppression or routed host prefixes require complete,
+   automatically maintained control-plane bindings.
 
 
 ``SmartctlDiskAttributeFailing``

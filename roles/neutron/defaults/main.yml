@@ -20,6 +20,11 @@ neutron_helm_release_namespace: openstack
 neutron_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 neutron_helm_values: {}
 
+# Time to wait for Helm operations to complete, using Go duration syntax.
+#
+# neutron_helm_timeout: 10m0s
+neutron_helm_timeout: 5m0s
+
 # List of networks to provision inside OpenStack
 neutron_networks: []
 
@@ -32,9 +37,20 @@ neutron_ingress_annotations: {}
 # Enable dns integration
 neutron_designate_integration_enabled: false
 
-# Enable neutron policy server to force external
-# policy check neutron port and address pairs actions.
+# Enable the Neutron policy server checks, which run inside the Neutron API
+# server and protect port, address pair and quarantine operations.
+#
+# neutron_policy_server_integration_enabled: false
 neutron_policy_server_integration_enabled: true
+
+# Enable the quarantine policy check, which stops project members from changing
+# the security groups, allowed address pairs or port security of a port that
+# carries an administrative security group named ``quarantine``. Enabling it
+# sets the Neutron ``update_port`` policy to Neutron's default rule with the
+# quarantine check added. Requires ``neutron_policy_server_integration_enabled``.
+#
+# neutron_policy_server_quarantine_enabled: true
+neutron_policy_server_quarantine_enabled: false
 
 # List of SSH keys for generic switch ML2 plugin configuration.
 #
