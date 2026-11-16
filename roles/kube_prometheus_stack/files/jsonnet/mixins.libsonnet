@@ -208,6 +208,7 @@ local mixins = {
       _config+:: {
         nodeExporterSelector: 'job="node-exporter"',
         diskDeviceSelector: 'device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"',
+        networkErrorRateThreshold: 0.01,
       },
       prometheusAlerts+:: {
         groups: [
@@ -235,6 +236,20 @@ local mixins = {
                   summary: 'Node memory: high utilization can affect host and workload stability',
                   description: 'Computed node memory utilization at {{ $labels.instance }} is {{ printf "%.2f" $value }}%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization.',
                   runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization',
+                },
+              } else if rule.alert == 'NodeNetworkReceiveErrs' then rule {
+                expr: |||
+                  rate(node_network_receive_errs_total{%(nodeExporterSelector)s}[2m]) / rate(node_network_receive_packets_total{%(nodeExporterSelector)s}[2m]) > %(networkErrorRateThreshold).5f
+                ||| % mixins.node._config,
+                annotations+: {
+                  description: '{{ $labels.instance }} interface {{ $labels.device }} has a receive error rate of {{ $value | humanizePercentage }} over the last two minutes, exceeding the %.2f%% threshold.' % [mixins.node._config.networkErrorRateThreshold * 100],
+                },
+              } else if rule.alert == 'NodeNetworkTransmitErrs' then rule {
+                expr: |||
+                  rate(node_network_transmit_errs_total{%(nodeExporterSelector)s}[2m]) / rate(node_network_transmit_packets_total{%(nodeExporterSelector)s}[2m]) > %(networkErrorRateThreshold).5f
+                ||| % mixins.node._config,
+                annotations+: {
+                  description: '{{ $labels.instance }} interface {{ $labels.device }} has a transmit error rate of {{ $value | humanizePercentage }} over the last two minutes, exceeding the %.2f%% threshold.' % [mixins.node._config.networkErrorRateThreshold * 100],
                 },
               } else rule
               for rule in group.rules
