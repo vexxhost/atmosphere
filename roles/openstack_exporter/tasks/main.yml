@@ -12,6 +12,30 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Validate Ironic lifecycle monitoring configuration
+  ansible.builtin.assert:
+    that:
+      - atmosphere_ironic_enabled | default(false) | bool
+    fail_msg: >-
+      openstack_exporter_baremetal_enabled requires
+      atmosphere_ironic_enabled=true.
+  when: openstack_exporter_baremetal_enabled | bool
+
+- name: Build effective OpenStack exporter arguments
+  ansible.builtin.set_fact:
+    _openstack_exporter_effective_args: >-
+      {{
+        (openstack_exporter_args
+         | reject('equalto', '--disable-service.baremetal')
+         | list)
+        if (atmosphere_ironic_enabled | default(false) | bool
+            and openstack_exporter_baremetal_enabled | bool)
+        else
+        (openstack_exporter_args
+         if '--disable-service.baremetal' in openstack_exporter_args
+         else openstack_exporter_args + ['--disable-service.baremetal'])
+      }}
+
 - name: Deploy service
   kubernetes.core.k8s:
     state: present
@@ -67,7 +91,7 @@
                 - name: openstack-exporter
                   image: "{{ atmosphere_images['prometheus_openstack_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
                   args: >-
-                    {{ openstack_exporter_args +
+                    {{ _openstack_exporter_effective_args +
                        (openstack_exporter_neutron_disabled_metrics
                         if atmosphere_network_backend == 'ovn'
                         else ['--disable-service.network']) }}

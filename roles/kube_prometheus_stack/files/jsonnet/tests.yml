@@ -2,6 +2,101 @@
 # SPDX-License-Identifier: Apache-2.0
 
 tests:
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_up'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicAPIUnavailable
+        exp_alerts: []
+
+  - interval: 1m
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicAPIUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Ironic API metrics are unavailable"
+              description: "The Ironic API collector has been unavailable for more than 5 minutes."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-enroll",name="enrolling",provision_state="enroll fail",power_state="",maintenance="false"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicNodeProvisioningFailed
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-failed",name="failed-node",provision_state="deploy failed",power_state="power off",maintenance="false"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicNodeProvisioningFailed
+        exp_alerts:
+          - exp_labels:
+              id: node-failed
+              name: failed-node
+              provision_state: deploy failed
+              power_state: power off
+              maintenance: "false"
+              severity: P4
+            exp_annotations:
+              summary: "Ironic node provisioning failed"
+              description: "Ironic node failed-node (node-failed) is in deploy failed."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-stalled",name="stalled-node",provision_state="wait call-back",power_state="power on",maintenance="false"}'
+        values: '1x130'
+    alert_rule_test:
+      - eval_time: 121m
+        alertname: IronicNodeProvisioningStalled
+        exp_alerts:
+          - exp_labels:
+              id: node-stalled
+              name: stalled-node
+              provision_state: wait call-back
+              power_state: power on
+              maintenance: "false"
+              severity: P4
+            exp_annotations:
+              summary: "Ironic node provisioning is stalled"
+              description: "Ironic node stalled-node (node-stalled) has remained in wait call-back for more than 2 hours."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-active",name="active-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x130'
+    alert_rule_test:
+      - eval_time: 121m
+        alertname: IronicNodeProvisioningStalled
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-off",name="powered-off-node",provision_state="active",power_state="power off",maintenance="false"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: IronicActiveNodePowerStateUnexpected
+        exp_alerts:
+          - exp_labels:
+              id: node-off
+              name: powered-off-node
+              provision_state: active
+              power_state: power off
+              maintenance: "false"
+              severity: P3
+            exp_annotations:
+              summary: "Active Ironic node has an unexpected power state"
+              description: "Active Ironic node powered-off-node (node-off) has reported power off for more than 15 minutes."
+
   # NodeNetworkMulticast - should NOT fire for sustained traffic below the
   # capacity-planning threshold.
   - interval: 1m
