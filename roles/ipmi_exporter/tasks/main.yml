@@ -13,9 +13,15 @@
 # under the License.
 
 - name: Deploy service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: monitoring
+
       - apiVersion: v1
         kind: ConfigMap
         metadata:

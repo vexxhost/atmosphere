@@ -13,6 +13,7 @@ information to ensure stable and efficient operation of the system.
 .. toctree::
    :maxdepth: 2
 
+   baremetal/index
    ceph
    database-backups
    emulated-tpm
@@ -22,3 +23,4 @@ information to ensure stable and efficient operation of the system.
    pmem
    troubleshooting
    upgrading
+   windows/index

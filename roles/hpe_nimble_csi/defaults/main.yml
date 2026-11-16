@@ -1,0 +1,34 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+hpe_nimble_csi_helm_release_name: hpe-csi-driver
+hpe_nimble_csi_helm_chart_path: "../../charts/hpe-csi-driver/"
+hpe_nimble_csi_helm_chart_ref: /usr/local/src/hpe-csi-driver
+
+hpe_nimble_csi_helm_release_namespace: kube-system
+hpe_nimble_csi_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+hpe_nimble_csi_helm_values: {}
+
+# Access protocol for volumes provisioned by the default StorageClass.
+# Valid values are ``iscsi`` and ``fc``.
+#
+# hpe_nimble_csi_access_protocol: iscsi
+hpe_nimble_csi_access_protocol: iscsi
+
+# Additional parameters to merge into the default StorageClass ``parameters``
+# block. Use this to set HPE Nimble CSI options such as ``performancePolicy``,
+# ``folder``, ``description``, ``dedupeEnabled``, ``thick``, ``destroyOnDelete``,
+# ``limitIops``, ``limitMbps``, ``pool``, ``encrypted``, etc. Refer to the
+# HPE Alletra 6000 / Nimble CSP StorageClass parameter reference:
+# https://scod.hpedev.io/csi_driver/container_storage_provider/hpe_alletra_6000/index.html#storageclass_parameters
+#
+# Values supplied here are merged on top of the role-controlled defaults
+# (``fstype``, ``accessProtocol`` and the secret references). User-supplied
+# keys win on conflict.
+#
+# Example:
+#   hpe_nimble_csi_storageclass_parameters:
+#     performancePolicy: default
+#     folder: my-folder
+#     dedupeEnabled: "true"
+hpe_nimble_csi_storageclass_parameters: {}

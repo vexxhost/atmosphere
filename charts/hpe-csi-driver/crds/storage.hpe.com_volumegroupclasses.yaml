@@ -1,0 +1,60 @@
+--- 
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: volumegroupclasses.storage.hpe.com
+spec:
+  conversion:
+    strategy: None
+  group: storage.hpe.com
+  names:
+    kind: VolumeGroupClass
+    listKind: VolumeGroupClassList
+    plural: volumegroupclasses
+    singular: volumegroupclass
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+        openAPIV3Schema:
+          description: VolumeGroupClass specifies parameters that a underlying
+            storage system uses when creating a volumegroup. A specific VolumeGroupClass
+            is used by specifying its name in a VolumeGroup object. VolumeGroupClasses
+            are non-namespaced
+          properties:
+            apiVersion:
+              description: APIVersion defines the versioned schema of this representation
+                of an object.
+              type: string
+            deletionPolicy:
+              description: deletionPolicy determines whether a VolumeGroupContent
+                created through the VolumeGroupClass should be deleted when its
+                bound VolumeGroup is deleted. Supported values are "Retain" and
+                "Delete". "Retain" means that the VolumeGroupContent and its physical
+                volumeGroup on underlying storage system are kept. "Delete" means that
+                the VolumeGroupContent and its physical volumeGroup on underlying
+                storage system are deleted. Required.
+              enum:
+              - Delete
+              - Retain
+              type: string
+            provisioner:
+              description: provisioner is the name of the storage driver that handles this
+                VolumeGroupClass. Required.
+              type: string
+            kind:
+              description: Kind is a string value representing the REST resource
+                this object represents.
+              type: string
+            parameters:
+              additionalProperties:
+                  type: string
+              description: parameters is a key-value map with storage driver specific
+                parameters for creating volumeGroups. These values are opaque to Kubernetes.
+              type: object
+          required:
+          - deletionPolicy
+          - provisioner
+          type: object
+    served: true
+    storage: true

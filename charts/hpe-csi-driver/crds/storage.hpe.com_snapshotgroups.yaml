@@ -1,0 +1,83 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: snapshotgroups.storage.hpe.com
+spec:
+  conversion:
+    strategy: None
+  group: storage.hpe.com
+  names:
+    kind: SnapshotGroup
+    listKind: SnapshotGroupList
+    plural: snapshotgroups
+    singular: snapshotgroup
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: SnapshotGroup is a user's request for creating a snapshotgroup
+        properties:
+          apiVersion:
+            description: APIVersion defines the versioned schema of this representation
+              of an object.
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource
+              this object represents'
+            type: string
+          spec:
+            description: spec defines the desired characteristics of a snapshotGroup
+              requested by a user.
+              Required.
+            properties:
+              source:
+                description: source specifies where a snapshotGroup will be created.
+                  This field is immutable after creation. Required.
+                properties:
+                  kind:
+                    description: kind of the source (VolumeGroup) is the only supported one.
+                    type: string
+                  apiGroup:
+                    description:  apiGroup of the source. Current supported is storage.hpe.com
+                    type: string
+                  name:
+                    description: name specifies the volumeGroupName of the VolumeGroup object in the same namespace as the SnapshotGroup object where the snapshotGroup should be dynamically taken from. This field is immutable.
+                    type: string
+                type: object
+              volumeSnapshotClassName:
+                description: name of the volumeSnapshotClass to create pre-provisioned snapshots
+                type: string
+              snapshotGroupClassName:
+                description: snapshotGroupClassName is the name of the SnapshotGroupClass requested by the SnapshotGroup.
+                type: string
+              snapshotGroupContentName:
+                description: snapshotGroupContentName is the name of the snapshotGroupContent the snapshotGroup is bound.
+                type: string
+            required:
+            - source
+            - volumeSnapshotClassName
+            - snapshotGroupClassName
+            type: object
+          status:
+            description: status represents the current information of a snapshotGroup.
+            properties:
+              creationTime:
+                description: creationTime is the timestamp when the point-in-time
+                  snapshotGroup is taken by the underlying storage system.
+                format: date-time
+                type: string
+              phase:
+                description: the state of the snapshotgroup
+                enum:
+                - Pending
+                - Ready
+                - Failed
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true

@@ -7,3 +7,5 @@ User Guide
 
    auth
    ironic
+   emulated-tpm
+   windows/index

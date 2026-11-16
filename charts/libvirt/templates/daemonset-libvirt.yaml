@@ -65,6 +65,7 @@ spec:
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
     spec:
+{{ tuple "libvirt" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
 {{ dict "envAll" $envAll "application" "libvirt" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       serviceAccountName: {{ $serviceAccountName }}
       nodeSelector:
@@ -345,6 +346,14 @@ spec:
               mountPath: /tmp/external-ceph-client-keyring
               subPath: key
               readOnly: true
+            {{- end }}
+            {{- if .Values.conf.hooks.enabled }}
+            {{- range $k, $v := .Values.conf.hooks.scripts }}
+            - name: libvirt-bin
+              mountPath: /etc/libvirt/hooks/{{ $k }}
+              subPath: {{ $k }}
+              readOnly: true
+            {{- end }}
             {{- end }}
 {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
         {{- if .Values.pod.sidecars.libvirt_exporter.enabled }}

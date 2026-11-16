@@ -1,0 +1,112 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: hpesnapshotgroupinfos.storage.hpe.com
+spec:
+  group: storage.hpe.com
+  names:
+    kind: HPESnapshotGroupInfo
+    plural: hpesnapshotgroupinfos
+    shortNames: 
+      - hpesgi
+  scope: Cluster
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: false  
+      schema:
+        openAPIV3Schema:
+          type: object
+          #x-kubernetes-preserve-unknown-fields: true
+          properties:
+            hpeSnapshotGroupInfos:
+              description: List of HPE snapshot groups created for 3PAR/Primera arrays.
+              type: object
+              items:
+                type: object
+                properties:
+                  uuid:
+                    description: The UUID of the node.
+                    type: string
+          
+                  record:
+                    description: Metadata for the volume group
+                    type: object
+
+                  snapshotVolumes:
+                    description: Snapshot volumes that are part of this snapshot group
+                    type: object
+                    items:
+                      type: object
+                      properties:
+                        srcVolumeId:
+                          description: ID of the volume that is the source of this snapshot volume 
+                          type: string
+
+                        srcVolumeName:
+                          description: Name of the volume that is the source of this snapshot volume
+                          type: string
+
+                        snapshotId:
+                          description: Snapshot volume Id
+                          type: string
+
+                        snapshotName:
+                          description: Snapshot volume name
+                          type: string
+    - name: v2
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true  
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+          properties:
+            hpeSnapshotGroupInfos:
+              description: List of HPE snapshot groups created for 3PAR/Primera arrays.
+              type: object
+              items:
+                type: object
+                properties:
+                  uuid:
+                    description: The UUID of the node.
+                    type: string
+          
+                  record:
+                    description: Metadata for the volume group
+                    type: object
+
+                  snapshotVolumes:
+                    description: Snapshot volumes that are part of this snapshot group
+                    type: object
+                    items:
+                      type: object
+                      properties:
+                        srcVolumeId:
+                          description: ID of the volume that is the source of this snapshot volume 
+                          type: string
+
+                        srcVolumeName:
+                          description: Name of the volume that is the source of this snapshot volume
+                          type: string
+
+                        snapshotId:
+                          description: Snapshot volume Id
+                          type: string
+
+                        snapshotName:
+                          description: Snapshot volume name
+                          type: string                          
+
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
