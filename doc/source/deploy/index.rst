@@ -16,6 +16,7 @@ and setup.
    inventory
    storage
    csi
+   images
    certificates
    glance
    neutron

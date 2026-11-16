@@ -20,13 +20,6 @@ for version in v1.25.11 v1.26.6 v1.27.3; do
         --coe kubernetes \
         --label kube_tag=${version} \
         --label boot_volume_size=40 \
-        --label container_infra_prefix=$(kubectl -n openstack get ingress/container-infra-registry -ojsonpath='{.spec.rules[0].host}') \
         k8s-${version};
 done;
 ```
-
-> **Note**
->
-> This command will configure the clusters to use the internal container registry
-> hosted by Atmosphere to avoid the need to talk to external registries. If you
-> want to use an external registry, you can remove the `--label container_infra_prefix`.
