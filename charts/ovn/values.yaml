@@ -30,6 +30,7 @@ images:
     vector: docker.io/timberio/vector:0.39.0-debian
     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     ovn_bgp_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    ovn_stale_port_cleanup: docker.io/openstackhelm/ovn:ubuntu_focal
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -56,6 +57,9 @@ labels:
   ovn_bgp_agent:
     node_selector_key: openvswitch
     node_selector_value: enabled
+  ovn_stale_port_cleanup:
+    node_selector_key: openvswitch
+    node_selector_value: enabled
 
 volume:
   ovn_ovsdb_nb:
@@ -80,6 +84,23 @@ conf:
   ovn_cms_options_gw_enabled: "enable-chassis-as-gw,availability-zones=nova"
   ovn_encap_type: geneve
   ovn_bridge: br-int
+  # Periodic cleanup of stale OVS ports on the integration bridge. Stale
+  # ports accumulate when libvirt removes a tap device but the matching
+  # OVS Port entry is left behind, eventually causing ovn-controller poll
+  # loop stalls. See vexxhost/atmosphere#369906.
+  stale_port_cleanup:
+    ovs_db_socket: /run/openvswitch/db.sock
+    interval_seconds: 3600
+    # Cap deletions per pass. Operators recovering an already-degraded
+    # fleet (thousands of orphans per host) may want to raise this for
+    # the first few cycles, then return it to a safe steady-state value.
+    max_deletions_per_cycle: 200
+    # A candidate must remain stale across this many consecutive cycles
+    # before it is removed. This guards against the race where the
+    # Neutron OVS agent has created the port but libvirt has not yet
+    # created the tap device.
+    min_stale_observations: 2
+    dry_run: 0
   ovn_bridge_mappings: external:br-ex
   # For DPDK enabled environments, enable netdev datapath type for br-int
   # ovn_bridge_datapath_type: netdev
@@ -239,6 +260,8 @@ pod:
       enabled: false
     ovn_controller:
       enabled: false
+    ovn_stale_port_cleanup:
+      enabled: false
   affinity:
     anti:
       type:
@@ -358,6 +381,13 @@ pod:
       limits:
         memory: "256Mi"
         cpu: "500m"
+    ovn_stale_port_cleanup:
+      requests:
+        memory: "32Mi"
+        cpu: "10m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
     jobs:
       image_repo_sync:
         requests:
@@ -495,6 +525,12 @@ dependencies:
           labels:
             application: openvswitch
             component: server
+    ovn_stale_port_cleanup:
+      pod:
+        - requireSameNode: true
+          labels:
+            application: openvswitch
+            component: server
     image_repo_sync:
       services:
         - endpoint: internal
@@ -510,6 +546,7 @@ manifests:
   statefulset_ovn_ovsdb_sb: true
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
+  daemonset_ovn_stale_port_cleanup: false
   job_image_repo_sync: true
   daemonset_ovn_bgp_agent: true
 ...
