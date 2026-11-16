@@ -23,6 +23,9 @@ function start () {
 {{- if ( has "ovn" .Values.network.backend ) }}
         --config-file /tmp/pod-shared/ovn.ini \
 {{- end }}
+{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
+        --config-file /etc/neutron/neutron_fwaas.conf \
+{{- end }}
 {{- if .Values.conf.plugins.taas.taas.enabled }}
         --config-file /etc/neutron/taas_plugin.ini \
 {{- end }}

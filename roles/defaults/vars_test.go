@@ -33,6 +33,19 @@ func TestImageHasPrefix(t *testing.T) {
 	}
 }
 
+func TestGetImagesResolvesTemplates(t *testing.T) {
+	images, err := GetImages()
+	require.NoError(t, err)
+	require.NotEmpty(t, images)
+
+	for name, image := range images {
+		t.Run(name, func(t *testing.T) {
+			assert.NotContains(t, image, "{{")
+			assert.NotContains(t, image, "}}")
+		})
+	}
+}
+
 func TestImageExist(t *testing.T) {
 	images, err := GetImages()
 	require.NoError(t, err)
