@@ -6,5 +6,6 @@ User Guide
    :maxdepth: 2
 
    auth
+   ironic
    emulated-tpm
    windows/index
