@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "webhook.fullname" . }}-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "webhook.name" . }}
+    chart: {{ include "webhook.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: webhook-test
+      image: curlimages/curl:latest
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing webhook health endpoint..."
+          curl -k -s -o /dev/null -w "%{http_code}" \
+            https://{{ include "webhook.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/healthz \
+            | grep -q "200" && echo "✓ Webhook is healthy" || (echo "✗ Webhook health check failed" && exit 1)

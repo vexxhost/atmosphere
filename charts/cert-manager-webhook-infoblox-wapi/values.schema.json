@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "cert-manager-webhook-infoblox-wapi Helm Values",
+  "description": "Values schema for the cert-manager-webhook-infoblox-wapi Helm chart",
+  "properties": {
+    "groupName": {
+      "type": "string",
+      "description": "The API group name for the webhook. Must be unique to your organization.",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+      "examples": [
+        "acme.mycompany.com"
+      ]
+    },
+    "replicaCount": {
+      "type": "integer",
+      "description": "Number of webhook replicas",
+      "minimum": 1,
+      "default": 1
+    },
+    "certManager": {
+      "type": "object",
+      "description": "cert-manager configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "Namespace where cert-manager is installed",
+          "default": "cert-manager"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "description": "Service account name of cert-manager",
+          "default": "cert-manager"
+        }
+      },
+      "required": [
+        "namespace",
+        "serviceAccountName"
+      ]
+    },
+    "rootCACertificate": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "string",
+          "description": "Duration of the root CA certificate",
+          "pattern": "^[0-9]+h$",
+          "default": "43800h"
+        }
+      }
+    },
+    "servingCertificate": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "string",
+          "description": "Duration of the serving certificate",
+          "pattern": "^[0-9]+h$",
+          "default": "8760h"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "description": "Container image configuration",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Image repository",
+          "default": "ghcr.io/sarg3nt/cert-manager-webhook-infoblox-wapi"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Image tag (defaults to chart appVersion)"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "description": "Image pull policy",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ],
+          "default": "IfNotPresent"
+        }
+      },
+      "required": [
+        "repository",
+        "pullPolicy"
+      ]
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "description": "Image pull secrets for private registries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "default": []
+    },
+    "nameOverride": {
+      "type": "string",
+      "description": "Override the name of the chart"
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "description": "Override the full name of the chart"
+    },
+    "podAnnotations": {
+      "type": "object",
+      "description": "Annotations to add to the pod",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "secretVolume": {
+      "type": "object",
+      "description": "Configuration for loading secrets from a host path",
+      "properties": {
+        "hostPath": {
+          "type": "string",
+          "description": "Path on the host to mount for secrets"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "description": "Service configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Kubernetes service type",
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ],
+          "default": "ClusterIP"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Service port",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 443
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Annotations to add to the service",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource limits and requests",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string"
+            },
+            "memory": {
+              "type": "string"
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string"
+            },
+            "memory": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "nodeSelector": {
+      "type": "object",
+      "description": "Node selector for pod scheduling",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "tolerations": {
+      "type": "array",
+      "description": "Tolerations for pod scheduling",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "affinity": {
+      "type": "object",
+      "description": "Affinity rules for pod scheduling",
+      "default": {}
+    },
+    "topologySpreadConstraints": {
+      "type": "array",
+      "description": "Topology spread constraints for pod distribution",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "description": "Pod Disruption Budget configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable PodDisruptionBudget",
+          "default": false
+        },
+        "minAvailable": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Minimum number of available pods"
+        },
+        "maxUnavailable": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Maximum number of unavailable pods"
+        }
+      }
+    },
+    "serviceMonitor": {
+      "type": "object",
+      "description": "ServiceMonitor configuration for Prometheus Operator",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable ServiceMonitor",
+          "default": false
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Namespace for ServiceMonitor"
+        },
+        "interval": {
+          "type": "string",
+          "description": "Scrape interval"
+        },
+        "scrapeTimeout": {
+          "type": "string",
+          "description": "Scrape timeout"
+        },
+        "additionalLabels": {
+          "type": "object",
+          "description": "Additional labels for ServiceMonitor",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "description": "NetworkPolicy configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable NetworkPolicy",
+          "default": false
+        },
+        "egressRules": {
+          "type": "array",
+          "description": "Egress rules for NetworkPolicy",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "groupName"
+  ]
+}
