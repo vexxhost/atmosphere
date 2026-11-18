@@ -1,0 +1,8 @@
+---
+security:
+  - |
+    Keycloak now starts with the accelerated Base64 decoder of Java disabled,
+    which mitigates CVE-2026-114938 (Java4Shell). The Java runtime in the
+    current Keycloak image is affected on x86-64 processors that support
+    AVX-512 VBMI, and an attacker could exploit it without signing in. Keycloak
+    pods restart when this change is deployed.
