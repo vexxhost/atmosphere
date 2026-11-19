@@ -1,0 +1,113 @@
+{{- if .Values.createTridentOrchestrator }}
+apiVersion: trident.netapp.io/v1
+kind: TridentOrchestrator
+metadata:
+  name: trident
+spec:
+  namespace: {{ .Release.Namespace }}
+  enableForceDetach: {{ include "trident.enableForceDetach" $ }}
+  IPv6: {{ include "trident.IPv6" $ }}
+  k8sTimeout: {{ .Values.tridentK8sTimeout }}
+  httpRequestTimeout: {{ .Values.tridentHttpRequestTimeout }}
+  silenceAutosupport: {{ include "trident.silenceAutosupport" $ }}
+  {{- if .Values.tridentExcludeAutosupport }}
+  excludeAutosupport: {{ .Values.tridentExcludeAutosupport }}
+  {{- end }}
+  autosupportImage: {{ include "trident.autosupportImage" $ }}
+  autosupportProxy: {{ .Values.tridentAutosupportProxy }}
+  autosupportInsecure: {{ .Values.tridentAutosupportInsecure }}
+  logFormat: {{ include "trident.logFormat" $ }}
+  disableAuditLog: {{ include "trident.disableAuditLog" $ }}
+  {{- if .Values.tridentDebug }}
+  debug: {{ .Values.tridentDebug }}
+  {{- end }}
+  {{- if .Values.tridentLogLevel }}
+  logLevel: {{ .Values.tridentLogLevel }}
+  {{- end }}
+  logWorkflows: {{ include "trident.logWorkflows" $ }}
+  logLayers: {{ include "trident.logLayers" $ }}
+  probePort: {{ include "trident.probePort" $ }}
+  tridentImage: {{ include "trident.image" $ }}
+  {{- if .Values.imageRegistry }}
+  imageRegistry: {{ .Values.imageRegistry }}
+  {{- end }}
+  kubeletDir: {{ .Values.kubeletDir }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- if .Values.tridentControllerPluginNodeSelector }}
+  controllerPluginNodeSelector:
+    {{- range $key, $value := .Values.tridentControllerPluginNodeSelector }}
+    {{ $key }}: "{{ $value }}"
+    {{- end }}
+  {{- end }}
+  {{- if .Values.tridentControllerPluginTolerations }}
+  controllerPluginTolerations:
+    {{- range $value := .Values.tridentControllerPluginTolerations }}
+    - {{- range $k, $v := $value }}
+      {{ $k }}: "{{ $v }}"
+      {{- end}}
+    {{- end}}
+  {{- end }}
+  {{- if .Values.tridentNodePluginNodeSelector }}
+  nodePluginNodeSelector:
+    {{- range $key, $value := .Values.tridentNodePluginNodeSelector }}
+    {{ $key }}: "{{ $value }}"
+    {{- end }}
+  {{- end }}
+  {{- if .Values.tridentNodePluginTolerations }}
+  nodePluginTolerations:
+    {{- range $value := .Values.tridentNodePluginTolerations }}
+    - {{- range $k, $v := $value }}
+      {{ $k }}: "{{ $v }}"
+      {{- end}}
+    {{- end}}
+  {{- end }}
+  imagePullPolicy: {{ include "imagePullPolicy" $ }}
+  windows: {{ .Values.windows }}
+  cloudProvider: {{ .Values.cloudProvider | quote }}
+  cloudIdentity: {{ .Values.cloudIdentity }}
+  gcpWIFAudience: {{ .Values.gcpWIFAudience | quote }}
+  enableACP: {{ .Values.enableACP }}
+  acpImage: {{ .Values.acpImage }}
+  httpsMetrics: {{ .Values.httpsMetrics }}
+  enableAutoBackendConfig: {{ or .Values.ontapConfigurator.enabled .Values.anfConfigurator.enabled }}
+  iscsiSelfHealingInterval: {{ .Values.iscsiSelfHealingInterval }}
+  iscsiSelfHealingWaitTime: {{ .Values.iscsiSelfHealingWaitTime }}
+  {{- if .Values.k8sAPIQPS }}
+  k8sAPIQPS: {{ .Values.k8sAPIQPS }}
+  {{- end }}
+  {{- if .Values.fsGroupPolicy }}
+  fsGroupPolicy: {{ .Values.fsGroupPolicy }}
+  {{- end }}
+  {{- if .Values.nodePrep }}
+  nodePrep: {{- range .Values.nodePrep }}
+    - {{.}} {{- end }}
+  {{- end }}
+  enableConcurrency: {{ .Values.enableConcurrency }}
+  enableCOSI: {{ .Values.enableCOSI }}
+  enableDataLIFRefresh: {{ .Values.enableDataLIFRefresh }}
+  {{- if .Values.skipCRDsToObliviate }}
+  skipCRDsToObliviate: {{- range .Values.skipCRDsToObliviate }}
+    - {{.}} {{- end }}
+  {{- end }}
+  {{ if or (include "trident.hasControllerResources" .) (include "trident.hasNodeLinuxResources" .) (include "trident.hasNodeWindowsResources" .) -}}
+  resources:
+    {{ if include "trident.hasControllerResources" . -}}
+    controller: {{ include  "trident.resources.controller" .Values.resources.controller | indent 6 }}
+    {{- end }}
+    {{ if or (include "trident.hasNodeLinuxResources" .) (include "trident.hasNodeWindowsResources" .) -}}
+    node:
+      {{ if include "trident.hasNodeLinuxResources" . -}}
+      linux: {{ include  "trident.resources.node.linux" .Values.resources.node.linux | indent 8 }}
+      {{- end }}
+      {{- if include "trident.hasNodeWindowsResources" . }}
+      windows: {{ include  "trident.resources.node.windows" .Values.resources.node.windows | indent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.hostNetwork }}
+  hostNetwork: {{ .Values.hostNetwork }}
+  {{- end }}
+{{- end }}

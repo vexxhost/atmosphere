@@ -111,6 +111,181 @@ PowerStore configuration. This includes specifying the block protocol, which
 can either be Fibre Channel (FC) or iSCSI, depending on your network
 infrastructure.
 
+**************
+NetApp Trident
+**************
+
+For environments using NetApp ONTAP storage such as AFF arrays, configure the
+Trident CSI driver by updating your Ansible inventory as follows:
+
+.. code-block:: yaml
+
+    csi_driver: trident
+    multipathd_arrays: [netapp_ontap]
+    trident_csi_management_lif: <FILL IN>
+    trident_csi_username: <FILL IN>
+    trident_csi_password: <FILL IN>
+
+Use ``trident`` as the Atmosphere ``csi_driver`` value. The Kubernetes CSI
+provisioner remains ``csi.trident.netapp.io``, and the backend driver is
+selected separately with values such as ``ontap-san``,
+``ontap-san-economy``, or ``ontap-nas``.
+
+By default, Atmosphere configures Trident with the ``ontap-san`` storage driver
+and ``trident_csi_access_protocol: iscsi``. It creates the ``general``
+StorageClass using the ``csi.trident.netapp.io`` provisioner. This is
+appropriate for ``ReadWriteOnce`` PVCs backed by iSCSI LUNs.
+
+Atmosphere sets ``trident_csi_fs_type: ext4`` by default for block-backed PVCs
+so Kubernetes ``fsGroup`` handling works as expected. Valid block filesystem
+values are ``ext3``, ``ext4``, and ``xfs``.
+
+For deployments that expect a large number of PVCs, consider using
+``trident_csi_storage_driver: ontap-san-economy``.
+
+To use Fibre Channel with the ``ontap-san`` driver, set
+``trident_csi_access_protocol: fc``. FC should only be used for bare-metal
+Kubernetes nodes with host HBA presentation and switch zoning already in place:
+
+.. code-block:: yaml
+
+    csi_driver: trident
+    trident_csi_storage_driver: ontap-san
+    trident_csi_access_protocol: fc
+    multipathd_arrays: [netapp_ontap]
+    trident_csi_management_lif: <FILL IN>
+    trident_csi_username: <FILL IN>
+    trident_csi_password: <FILL IN>
+
+The ``ontap-san`` driver also supports NVMe/TCP by setting
+``trident_csi_access_protocol: nvme``. The ``ontap-san-economy`` driver
+supports iSCSI only.
+
+If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
+
+.. code-block:: yaml
+
+    csi_driver: trident
+    trident_csi_storage_driver: ontap-nas
+    trident_csi_access_protocol: nfs
+    trident_csi_management_lif: <FILL IN>
+    trident_csi_username: <FILL IN>
+    trident_csi_password: <FILL IN>
+
+For ``trident_csi_access_protocol: nfs``, Atmosphere defaults
+``trident_csi_fs_type`` to ``nfs`` because Trident presents an NFS filesystem
+for ONTAP NAS volumes. Atmosphere installs NFS client tools on each node.
+
+Atmosphere does not set ``trident_csi_svm`` or ``trident_csi_data_lif`` by
+default. Set ``trident_csi_svm`` only when using cluster-scoped credentials
+and the backend must target a specific SVM. Set ``trident_csi_data_lif`` only
+for NAS backends when a specific data LIF must be selected. Do not set
+``trident_csi_data_lif`` for SAN backends.
+
+The driver uses the bundled Trident 26.10.0 operator Helm chart. Its operator,
+Trident, autosupport, Helm hook, and CSI sidecar images are pinned in the release
+manifest and use ``atmosphere_image_prefix`` and ``atmosphere_image_mirrors``.
+No installer archive is downloaded during deployment. Set
+``trident_csi_namespace`` to choose the installation namespace.
+
+Periodic NetApp autosupport reporting is silenced by default. Set
+``trident_csi_silence_autosupport: false`` to enable it.
+
+By default, Trident chooses the ONTAP API according to the backend and ONTAP
+version. NVMe backends always require REST. ``trident_csi_use_rest`` accepts
+``null`` for automatic selection, ``true`` for REST, or ``false`` for ZAPI;
+explicit ZAPI selection is rejected for NVMe. Use REST with ASA r2 systems.
+
+The default volume name template includes ``trident_csi_storage_prefix`` and
+truncates the PVC name so ONTAP volume names stay within length limits. Mark
+custom templates with ``!unsafe`` so Ansible does not try to render them:
+
+.. code-block:: yaml
+
+    trident_csi_name_template: !unsafe >-
+      {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ printf "%.63s" .volume.RequestName }}
+
+The Trident backend is named after ``trident_csi_storage_driver`` by default.
+Set ``trident_csi_backend_config_name`` to choose a different name.
+
+You can pass additional backend options through
+``trident_csi_backend_options`` and additional StorageClass parameters through
+``trident_csi_storage_class_parameters``.
+
+For test environments that do not have access to ONTAP yet, set
+``trident_csi_wait_for_backend: false`` so the role can validate the operator,
+backend object, and StorageClass without waiting for a successful backend bind.
+
+Host preparation
+================
+
+The CSI playbook prepares the controllers before installing the operator,
+backend and StorageClass. Atmosphere schedules every workload that uses
+persistent volumes on the control plane, so the Trident operator, controller
+plugin and node plugin run only on nodes labelled
+``openstack-control-plane: enabled``. Compute nodes are not changed by Trident;
+the ``multipathd`` and ``iscsi`` roles continue to manage them for Cinder.
+
+If workloads with persistent volumes run on other nodes, change
+``trident_csi_node_selector`` to include them and make sure those nodes are
+prepared in the same way as controllers. Volumes cannot attach on nodes without
+the Trident node plugin.
+
+For iSCSI, it installs the required tools, sets
+``node.session.scan = manual``, starts the services and ensures each node has
+an initiator name. Existing names are preserved and duplicates among
+controllers cause an error.
+
+The ``node.session.scan`` setting applies host-wide. On hosts that are both
+controllers and computes it also covers Cinder iSCSI attachments. The
+OpenStack block storage connector scans the LUNs it attaches explicitly, so
+attachments are unaffected.
+
+For NVMe/TCP, it installs ``nvme-cli`` and any missing extra kernel modules,
+loads ``nvme-tcp`` and persists it in ``/etc/modules-load.d/``. Missing or empty
+``/etc/nvme/hostnqn`` files are generated; existing NQNs are preserved and
+checked for duplicates. RHEL nodes require version 9 or later for NVMe/TCP.
+For Fibre Channel, host HBA presentation and switch zoning must be configured
+before deployment.
+
+SAN multipathing
+================
+
+Set ``multipathd_arrays`` in inventory for the controllers. Include
+``netapp_ontap`` and every other array that the host needs. Compute nodes only
+need the arrays used by Cinder. For example, controllers that use ONTAP for
+Trident and computes that use Pure for Cinder can have these group variables:
+
+.. code-block:: yaml
+
+    # group_vars/controllers.yml
+    multipathd_arrays: [netapp_ontap]
+
+    # group_vars/computes.yml
+    multipathd_arrays: [pure_flasharray]
+
+The shared ``multipathd`` role sets ``find_multipaths no``, blocks unknown
+devices and allows only the selected array vendor/product matches. This
+protects local root, LVM, Ceph OSD and Nova disks without requiring their WWIDs.
+An array omitted from the list is blocked. CSI and standalone OpenStack runs
+use the same host inventory, so they retain the same policy.
+
+Available profiles are ``netapp_ontap``, ``pure_flasharray``,
+``pure_flasharray_nvme``, ``nimble`` and ``powerstore``. With an empty list,
+the existing multipath policy remains unchanged. SAN preparation requires
+``netapp_ontap`` in the list and ``multipathd_find_multipaths: "no"``.
+``multipathd_blacklist_wwids`` is an optional exclusion for individual LUNs;
+do not list required array LUNs there, as WWID exclusions take precedence.
+
+If another system manages multipath, set
+``trident_csi_configure_multipath: false`` to skip configuration changes;
+the SAN inventory requirements still apply. Before enabling array filtering
+on existing hosts, check ``multipath -ll`` and ``multipath -v3 -d`` for local
+disks and each enabled array, and validate volume attachment on computes.
+When ``multipathd_arrays`` is set, the ``multipathd`` role also fails before
+changing the configuration if an active multipath map belongs to an array that
+is not listed.
+
 *********
 IBM Block
 *********

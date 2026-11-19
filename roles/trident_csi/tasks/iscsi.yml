@@ -1,0 +1,62 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Set manual iSCSI session scanning
+  ansible.builtin.lineinfile:
+    path: /etc/iscsi/iscsid.conf
+    regexp: '^\s*#?\s*node\.session\.scan\s*='
+    line: node.session.scan = manual
+  notify: Restart Trident iscsid
+
+- name: Check iSCSI initiator name file
+  ansible.builtin.stat:
+    path: "{{ trident_csi_initiator_name_path }}"
+  register: _trident_csi_initiator_name
+
+- name: Read existing iSCSI initiator name
+  ansible.builtin.slurp:
+    src: "{{ trident_csi_initiator_name_path }}"
+  register: _trident_csi_initiator_name_content
+  when: _trident_csi_initiator_name.stat.exists
+
+- name: Configure missing iSCSI initiator name
+  when: >-
+    (_trident_csi_initiator_name_content.content | default('') | b64decode |
+     regex_findall('(?m)^InitiatorName=(\S+)\s*$') | length) == 0
+  block:
+    - name: Generate iSCSI initiator name
+      changed_when: true
+      ansible.builtin.command:
+        cmd: iscsi-iname
+      register: _trident_csi_iscsi_iname
+
+    - name: Write iSCSI initiator name
+      ansible.builtin.copy:
+        content: "InitiatorName={{ _trident_csi_iscsi_iname.stdout | trim }}\n"
+        dest: "{{ trident_csi_initiator_name_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Trident iscsid
+
+- name: Read configured iSCSI initiator name
+  ansible.builtin.slurp:
+    src: "{{ trident_csi_initiator_name_path }}"
+  register: _trident_csi_initiator_name_content
+
+- name: Validate iSCSI initiator name
+  ansible.builtin.assert:
+    that:
+      - _trident_csi_initiator_names | length == 1
+    fail_msg: "Expected one nonempty InitiatorName in {{ trident_csi_initiator_name_path }}."
+  vars:
+    _trident_csi_initiator_names: >-
+      {{ _trident_csi_initiator_name_content.content | b64decode |
+         regex_findall('(?m)^InitiatorName=(\S+)\s*$') }}
+
+- name: Record iSCSI initiator name
+  ansible.builtin.set_fact:
+    _trident_csi_iscsi_initiator: >-
+      {{ _trident_csi_initiator_name_content.content | b64decode |
+         regex_findall('(?m)^InitiatorName=(\S+)\s*$') | first }}

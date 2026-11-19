@@ -12,6 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Validate multipath array selection
+  ansible.builtin.assert:
+    that:
+      - multipathd_arrays is sequence and multipathd_arrays is not string and multipathd_arrays is not mapping
+      - multipathd_arrays | difference(multipathd_array_profiles.keys() | list) | length == 0
+    fail_msg: Select known array profiles using multipathd_arrays.
+
 - name: Add backports PPA
   ansible.builtin.apt_repository:
     repo: "{{ multipathd_repository }}"
@@ -26,7 +33,39 @@
     name: "{{ 'multipath-tools' if ansible_os_family == 'Debian' else 'device-mapper-multipath' }}"
     state: latest # noqa: package-latest
   notify:
-    - Restart "multipathd"
+    - Reload "multipathd"
+
+- name: Read active multipath maps
+  ansible.builtin.command:
+    cmd: multipath -ll
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: _multipathd_active_maps
+  when:
+    - multipathd_arrays | length > 0
+    - multipathd_check_active_maps | bool
+
+- name: Check active multipath maps are allowed
+  ansible.builtin.assert:
+    that:
+      - _multipathd_unlisted_maps | length == 0
+    fail_msg: >-
+      These active multipath maps match none of the arrays in
+      multipathd_arrays ({{ multipathd_arrays | join(', ') }}) and would be
+      blocked: {{ _multipathd_unlisted_maps | join('; ') }}. Add the matching
+      array profiles to multipathd_arrays, or detach those volumes and set
+      multipathd_check_active_maps to false.
+  vars:
+    _multipathd_unlisted_maps: >-
+      {{
+        _multipathd_active_maps.stdout |
+        vexxhost.atmosphere.multipath_unlisted_maps(
+          _multipathd_selected_devices, multipathd_blacklist_wwids)
+      }}
+  when:
+    - multipathd_arrays | length > 0
+    - multipathd_check_active_maps | bool
 
 - name: Install the configuration file
   ansible.builtin.template:
@@ -36,4 +75,10 @@
     group: root
     mode: "0644"
   notify:
-    - Restart "multipathd"
+    - Reload "multipathd"
+
+- name: Enable multipathd
+  ansible.builtin.service:
+    name: multipathd
+    enabled: true
+    state: started
