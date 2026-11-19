@@ -67,6 +67,35 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",job="openstack-exporter",l3_agent_id="agent-1",router_id="router-1"}'
+        values: '1x10'
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",job="monitoring/openstack-database-exporter",l3_agent_id="agent-1",router_id="router-1"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NeutronRouterMultipleActiveL3Agents
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",l3_agent_id="agent-1",router_id="router-1"}'
+        values: '1x10'
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",l3_agent_id="agent-2",router_id="router-1"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NeutronRouterMultipleActiveL3Agents
+        exp_alerts:
+          - exp_labels:
+              router_id: router-1
+              severity: P3
+            exp_annotations:
+              summary: "Neutron router: multiple active L3 agents can reset traffic"
+              description: "Router router-1 has 2 distinct active L3 agents for more than 5 minutes. Exactly one active L3 agent is normal; multiple active agents can cause network resets and traffic drops."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#neutronroutermultipleactivel3agents"
+
+  - interval: 1m
+    input_series:
       - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-6txcp",id="2586db0d-54f2-4f86-9592-dfd780e08a24",service="nova-conductor",zone="internal"}'
         values: '1x30'
       - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-l5r9p",id="468f47b0-3341-4930-a854-fe19b586da38",service="nova-conductor",zone="internal"}'

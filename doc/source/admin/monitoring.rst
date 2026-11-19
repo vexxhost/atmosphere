@@ -1221,6 +1221,63 @@ VM workloads while preserving normal behavior elsewhere.
    compute scheduling changes. If normal memory runs out, move workloads,
    increase host capacity, or resolve memory leaks.
 
+``NeutronRouterMultipleActiveL3Agents``
+========================================
+
+This P3 alert fires when a Neutron HA router has more than one distinct L3
+agent reporting ``ha_state="active"`` for five minutes. Exactly one active
+agent is normal. Multiple active agents can cause gateway traffic resets and
+drops. The alert deduplicates by ``router_id`` and ``l3_agent_id`` so that the
+same agent exported by multiple OpenStack exporters does not cause a false
+alert.
+
+**Likely Root Causes**
+
+- A network partition or packet loss between L3 agents prevents VRRP state
+  convergence.
+- A failed or stalled L3 agent, keepalived process, or its host disrupts HA
+  state transitions.
+- An L3 agent restart or a recent networking change leaves HA state unsettled.
+
+**Diagnostic and Remediation Steps**
+
+1. Confirm the number of distinct active agents for the affected router:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        'sum by (router_id) (max by (router_id, l3_agent_id) (openstack_neutron_l3_agent_of_router{router_id="<router-id>",ha_state="active"}))'
+
+2. Check the raw series and verify that two exporters are not publishing a
+   duplicate for the same ``l3_agent_id``:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        'openstack_neutron_l3_agent_of_router{router_id="<router-id>"}'
+
+3. Query the Neutron scheduler state and agent heartbeats with an authenticated
+   OpenStack client:
+
+   .. code-block:: console
+
+      openstack network agent list --router <router-id>
+
+4. Check L3-agent Pods and logs for restarts, VRRP, or keepalived errors:
+
+   .. code-block:: console
+
+      kubectl -n openstack get pods -o wide | grep neutron-l3-agent
+      kubectl -n openstack logs <neutron-l3-agent-pod> --since=30m
+
+5. If two distinct agents remain active, investigate their host connectivity
+   and VRRP communication before taking action. Do not restart or reschedule
+   agents merely to clear the alert. Apply a targeted recovery only under
+   approved change control, then confirm one active and the remaining agents
+   in standby.
+
 ``NginxIngressCriticalErrorBudgetBurn``
 =======================================
 
