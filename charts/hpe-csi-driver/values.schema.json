@@ -3,7 +3,7 @@
     "$id": "http://example.com/example.json",
     "title": "HPE CSI Driver for Kubernetes Helm Chart JSON Schema",
     "type": "object",
-    "default": 
+    "default":
         {
             "disable": {
                 "nimble": false,
@@ -11,12 +11,15 @@
                 "alletra6000": false,
                 "alletra9000": false,
                 "alletraStorageMP": false,
-                "b10000FileService": false
+                "b10000FileService": false,
+                "x10000FileService": false
             },
             "disableNodeConformance": false,
             "disableNodeConfiguration": false,
             "disableHostDeletion": false,
             "disablePreInstallHooks": false,
+            "disableHostname": false,
+            "maxHostnameLength": 31,
             "imagePullPolicy": "IfNotPresent",
             "iscsi": {
                 "chapSecretName": ""
@@ -25,7 +28,7 @@
             "kubeletRootDir": "/var/lib/kubelet/",
             "disableNodeGetVolumeStats": false,
             "disableNodeMonitor": false,
-	    "maxVolumesPerNode": 100,
+	    "maxVolumesPerNode": 250,
             "csp": {
                 "nodeSelector": {},
                 "tolerations": [],
@@ -60,6 +63,8 @@
         "kubeletRootDir",
         "disableNodeGetVolumeStats",
         "disableNodeMonitor",
+        "disableHostname",
+        "maxHostnameLength",
 	"maxVolumesPerNode",
         "csp",
         "controller",
@@ -79,7 +84,8 @@
                     "alletra6000": false,
                     "alletra9000": false,
                     "alletraStorageMP": false,
-                    "b10000FileService": false
+                    "b10000FileService": false,
+                    "x10000FileService": false
                 },
             "required": [
                 "nimble",
@@ -87,7 +93,8 @@
                 "alletra6000",
                 "alletra9000",
                 "alletraStorageMP",
-                "b10000FileService"
+                "b10000FileService",
+                "x10000FileService"
             ],
             "properties": {
                 "nimble": {
@@ -125,6 +132,12 @@
                     "title": "HPE Alletra Storage MP B10000 File Service",
                     "type": "boolean",
                     "default": false
+                },
+                "x10000FileService": {
+                    "$id": "#/properties/disable/properties/x10000FileService",
+                    "title": "HPE Alletra Storage MP X10000 File Service",
+                    "type": "boolean",
+                    "default": false
                 }
             },
             "additionalProperties": false
@@ -156,6 +169,20 @@
             "description": "Disable pre-install hooks when the chart is rendered outside of Kubernetes, such as CI/CD systems.",
             "type": "boolean",
             "default": false
+        },
+        "disableHostname": {
+            "$id": "#/properties/disableHostname",
+            "title": "Disable hostname",
+            "description": "Set to true to generate a unique hash for storage backends that have hostname length limitations.",
+            "type": "boolean",
+            "default": false
+        },
+        "maxHostnameLength": {
+            "$id": "#/properties/maxHostnameLength",
+            "title": "Max hostname length",
+            "description": "Max hostname length accepted by the storage backend when disableHostname is true.",
+            "type": "integer",
+            "default": 31
         },
         "imagePullPolicy": {
             "$id": "#/properties/imagePullPolicy",
@@ -219,7 +246,7 @@
             "title": "Max volumes per node",
             "description": "The maximum amount of volumes the CSI controller will publish to a node.",
             "type": "integer",
-            "default": 100
+            "default": 250
 	},
         "csp": {
             "nodeSelector": {
@@ -379,6 +406,7 @@
                 "nimbleCSP",
                 "primera3parCSP",
                 "b10000FileServiceCSP",
+                "x10000FileServiceCSP",
                 "nfsProvisioner",
                 "csiExtensions",
                 "csiVolumeGroupProvisioner",
@@ -414,6 +442,11 @@
                 "b10000FileServiceCSP": {
                     "$id": "#/properties/images/properties/b10000FileServiceCSP",
                     "title": "Alletra Storage MP B10000 File Service CSP",
+                    "type": "string"
+                },
+                "x10000FileServiceCSP": {
+                    "$id": "#/properties/images/properties/x10000FileServiceCSP",
+                    "title": "Alletra Storage MP X10000 File Service CSP",
                     "type": "string"
                 },
                 "nfsProvisioner": {
