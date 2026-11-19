@@ -1,0 +1,33 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Inspect the owned discovery recovery state
+  delegate_to: "{{ atmosphere_discovery_restore_host }}"
+  ansible.builtin.stat:
+    path: "/var/lib/atmosphere/kubernetes-upgrade/{{ atmosphere_discovery_restore_kind | default('percona') }}.json"
+  register: atmosphere_discovery_recovery_state
+
+- name: Restore the owned discovery state
+  when: atmosphere_discovery_recovery_state.stat.exists
+  block:
+    - name: Resume discovery and preserve the original configuration
+      delegate_to: "{{ atmosphere_discovery_restore_host }}"
+      changed_when: atmosphere_discovery_restored.rc == 0 and (atmosphere_discovery_restored.stdout | from_json).changed
+      ansible.builtin.command:
+        argv:
+          - "{{ hostvars[atmosphere_discovery_restore_host].ansible_facts.python.executable | default('/usr/bin/python3') }}"
+          - /var/lib/atmosphere/kubernetes-upgrade/discovery.py
+          - restore
+          - --kind
+          - "{{ atmosphere_discovery_restore_kind | default('percona') }}"
+      register: atmosphere_discovery_restored
+  rescue:
+    - name: Retain a discovery cleanup error while restoring other hosts
+      ansible.builtin.set_fact:
+        atmosphere_discovery_restore_errors: "{{ atmosphere_discovery_restore_errors | default([]) + [atmosphere_discovery_restore_host] }}"
+
+    - name: Propagate an NFD restoration failure
+      when: atmosphere_discovery_restore_kind | default('percona') == 'nfd'
+      ansible.builtin.fail:
+        msg: NFD configuration restoration failed; its recovery watchdog remains active.

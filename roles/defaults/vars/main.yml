@@ -15,6 +15,19 @@
 atmosphere_release: main
 ceph_version: 18.2.7
 
+# Connected UDP sockets can retain retired DNS backends, and the operator's
+# default HTTP/2 recovery exceeds its leadership renewal deadline.
+# Site overrides already belong in cilium_helm_values.
+_atmosphere_kubernetes_upgrade_cilium_values:
+  socketLB:
+    hostNamespaceOnly: true
+  operator:
+    extraEnv:
+      - name: HTTP2_READ_IDLE_TIMEOUT_SECONDS
+        value: "2"
+      - name: HTTP2_PING_TIMEOUT_SECONDS
+        value: "2"
+
 _atmosphere_images:
   alertmanager: "{{ atmosphere_image_prefix }}quay.io/prometheus/alertmanager:v0.27.0"
   barbican_api: "{{ atmosphere_image_prefix }}ghcr.io/vexxhost/barbican:main@sha256:4708e83dd8e722e41cbbd64533de1155636f25688bfd6c97560b7b5fd22c90f1"

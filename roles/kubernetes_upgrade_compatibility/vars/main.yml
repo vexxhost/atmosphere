@@ -1,0 +1,10 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+# Follow the existing controller placement instead of a second host list.
+_atmosphere_kubernetes_upgrade_discovery_hosts: "{{ groups[kubernetes_control_plane_group | default('controllers')] }}"
+
+# Keep the one-hour recovery window, extending it for longer controller
+# operations instead of adding a second public timeout setting.
+_atmosphere_kubernetes_upgrade_discovery_timeout: "{{ [3600, (kubernetes_upgrade_operation_timeout | default(1800) | int) * 2] | max }}"

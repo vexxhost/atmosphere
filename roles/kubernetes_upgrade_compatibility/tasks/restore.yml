@@ -1,0 +1,28 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+# Keep NFD restoration in always: a failure resuming one peer-list must not
+# leave API publication disabled. The watchdogs remain an independent fallback.
+- name: Restore application discovery after the controller operation
+  block:
+    - name: Reset discovery restoration errors
+      ansible.builtin.set_fact:
+        atmosphere_discovery_restore_errors: []
+
+    - name: Resume Percona discovery on every protected host
+      ansible.builtin.include_tasks: restore-host.yml
+      loop: "{{ _atmosphere_kubernetes_upgrade_discovery_hosts }}"
+      loop_control:
+        loop_var: atmosphere_discovery_restore_host
+
+    - name: Report incomplete discovery restoration
+      when: atmosphere_discovery_restore_errors | length > 0
+      ansible.builtin.fail:
+        msg: "Discovery restoration failed on {{ atmosphere_discovery_restore_errors | join(', ') }}; recovery watchdogs remain active."
+  always:
+    - name: Restore the original NFD configuration
+      vars:
+        atmosphere_discovery_restore_host: "{{ kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group | default('controllers')][0]) }}"
+        atmosphere_discovery_restore_kind: nfd
+      ansible.builtin.include_tasks: restore-host.yml
