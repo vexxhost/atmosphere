@@ -1,6 +1,6 @@
 # HPE CSI Driver for Kubernetes Helm chart
 
-The [HPE CSI Driver for Kubernetes](https://scod.hpedev.io/csi_driver/index.html) leverages Hewlett Packard Enterprise primary storage platforms to provide scalable, persistent block and file storage for stateful and ephemeral applications. Currently supported storage platforms include HPE Alletra Storage MP B10000, HPE Alletra 5000/6000/9000, HPE Nimble Storage, HPE Primera and HPE 3PAR.
+The [HPE CSI Driver for Kubernetes](https://scod.hpedev.io/csi_driver/index.html) leverages Hewlett Packard Enterprise primary storage platforms to provide scalable, persistent block and file storage for stateful and ephemeral applications. Currently supported storage platforms include HPE Alletra Storage MP B10000, Alletra Storage MP X10000, Alletra 5000/6000/9000, Nimble Storage, Primera and 3PAR.
 
 ## Release highlights
 
@@ -18,11 +18,12 @@ The HPE CSI Driver for Kubernetes Helm chart is the primary delivery vehicle for
 
 Refer to [Compatibility & Support](https://scod.hpedev.io/csi_driver/index.html#compatibility_and_support) for currently supported versions of Kubernetes and compute node operating systems.
 
-Depending on which [Container Storage Provider](https://scod.hpedev.io/container_storage_provider/index.html) (CSP) is being used, other prerequisites and requirements may apply, such as storage platform OS and features.
+Depending on which [Container Storage Provider](https://scod.hpedev.io/csi_driver/container_storage_provider/index.html) (CSP) is being used, other prerequisites and requirements may apply, such as storage platform OS and features.
 
-- [HPE Alletra Storage MP B10000, Alletra 9000, Primera and 3PAR](https://scod.hpedev.io/container_storage_provider/hpe_alletra_storage_mp_b10000/index.html)
-- [HPE Alletra Storage MP B10000 File Service](https://scod.hpedev.io/container_storage_provider/hpe_alletra_storage_mp_b10000_file_service/index.html)
-- [HPE Alletra 5000/6000 and Nimble Storage](https://scod.hpedev.io/container_storage_provider/hpe_alletra_6000/index.html)
+- [HPE Alletra Storage MP B10000, Alletra 9000, Primera and 3PAR](https://scod.hpedev.io/csi_driver/container_storage_provider/hpe_alletra_storage_mp_b10000/index.html)
+- [HPE Alletra Storage MP B10000 File Service](https://scod.hpedev.io/csi_driver/container_storage_provider/hpe_alletra_storage_mp_b10000_file_service/index.html)
+- [HPE Alletra Storage MP X10000](https://scod.hpedev.io/csi_driver/container_storage_provider/hpe_alletra_storage_mp_x10000/index.html)
+- [HPE Alletra 5000/6000 and Nimble Storage](https://scod.hpedev.io/csi_driver/container_storage_provider/hpe_alletra_6000/index.html)
 
 ## Configuration and installation
 
@@ -34,14 +35,17 @@ The following table lists the configurable parameters of the chart and their def
 | disable.primera           | Disable HPE Primera (and 3PAR) CSP `Service`.                                                      | false            |
 | disable.alletra6000       | Disable HPE Alletra 5000/6000 CSP `Service`.                                                       | false            |
 | disable.alletra9000       | Disable HPE Alletra 9000 CSP `Service`.                                                            | false            |
-| disable.alletraStorageMP  | Disable HPE Alletra Storage MP B10000 Block Storage CSP `Service`.                                                      | false            |
+| disable.alletraStorageMP  | Disable HPE Alletra Storage MP B10000 Block Storage CSP `Service`.                                 | false            |
 | disable.b10000FileService  | Disable HPE Alletra Storage MP B10000 File Service CSP `Service`.                                  | false            |
+| disable.x10000FileService  | Disable HPE Alletra Storage MP X10000 File Service CSP `Service`.                                  | false            |
 | disableNodeConformance    | Disable automatic installation of iSCSI, multipath and NFS packages.                               | false            |
 | disableNodeConfiguration  | Disables node conformance and configuration.`*`                                                    | false            |
 | disableNodeGetVolumeStats | Disable NodeGetVolumeStats call to CSI driver.                                                     | false            |
 | disableNodeMonitor        | Disables the Node Monitor that manages stale storage resources.                                    | false            |
 | disableHostDeletion       | Disables host deletion by the CSP when no volumes are associated with the host.                    | false            |
 | disablePreInstallHooks    | Disable pre-install hooks when the chart is rendered outside of Kubernetes, such as CI/CD systems. | false            |
+| disableHostname           | Set to `true` to generate a unique hash for storage backends that have hostname length limitations. | false           |
+| maxHostnameLength         | Max hostname length accepted by the storage backend when `disableHostname` is true.                | 31               |
 | imagePullPolicy           | Image pull policy (`Always`, `IfNotPresent`, `Never`).                                             | IfNotPresent     |
 | iscsi.chapSecretName      | Secret containing chapUser and chapPassword for iSCSI                                              | ""               |
 | logLevel                  | Log level. Can be one of `info`, `debug`, `trace`, `warn` and `error`.                             | info             |
@@ -62,10 +66,10 @@ The following table lists the configurable parameters of the chart and their def
 | node.tolerations          | Node taints to tolerate for the HPE CSI Driver node Pods.                                          | []               |
 | node.resources            | A resource block with requests and limits for node containers.                                     | From [values.yaml](https://github.com/hpe-storage/co-deployments/blob/master/helm/values/csi-driver) |
 | images                    | Key/value pairs of HPE CSI Driver runtime images.                                                  | From [values.yaml](https://github.com/hpe-storage/co-deployments/blob/master/helm/values/csi-driver) |
-| maxVolumesPerNode         | Maximum number of volumes the CSI controller will publish to a node.`**`                           | 100 |
+| maxVolumesPerNode         | Maximum number of volumes the CSI controller will publish to a node.`**`                           | 250 |
 
 `*` = Disabling node conformance and configuration may prevent the CSI driver from functioning properly. See the [manual node configuration](https://scod.hpedev.io/csi_driver/operations.html#manual_node_configuration) section on SCOD to understand the consequences.
-`**` = The default value is the current well tested upper limit. Do not increase the default value unless the use case has been well tested.
+<br />`**` = The default value is the current well tested upper limit. Do not increase the default value unless the use case has been well tested and is within the [Known Limitations](https://scod.hpedev.io/csi_driver/index.html#known_limitations) for how many paths that are allowed.
 
 It's recommended to create a [values.yaml](https://github.com/hpe-storage/co-deployments/blob/master/helm/values/csi-driver) file from the corresponding release of the chart and edit it to fit the environment the chart is being deployed to. Download and edit [a sample file](https://github.com/hpe-storage/co-deployments/blob/master/helm/values/csi-driver).
 
@@ -93,6 +97,7 @@ helm install --create-namespace -n hpe-storage my-hpe-csi-driver hpe-storage/hpe
 ### Upgrading the chart
 
 Due to the [helm limitation](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#some-caveats-and-explanations) to not support upgrade of CRDs between different chart versions, helm chart upgrade is not supported.
+
 Our recommendation is to uninstall the existing chart and install the chart with the desired version. CRDs will be preserved between uninstall and install.
 
 #### Upgrading from any version below 3.1.0
