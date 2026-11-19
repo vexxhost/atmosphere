@@ -33,6 +33,18 @@ the following to your inventory:
 These values will be merged with the default values in the chart, and will be
 used to configure the ingress controller.
 
+******
+HTTP/2
+******
+
+HTTP/2 is disabled by default to mitigate ``CVE-2026-123007`` and
+``CVE-2026-123633``. HTTPS clients use HTTP/1.1 instead. Services that require
+HTTP/2, such as gRPC, cannot use this ingress while HTTP/2 is disabled.
+
+The default sets ``controller.config.use-http2`` to ``"false"``. Inventory
+overrides in ``ingress_nginx_helm_values`` must keep this setting disabled
+until the ingress controller includes fixes for these vulnerabilities.
+
 ***********************
 TLS Version and Ciphers
 ***********************
