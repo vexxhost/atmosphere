@@ -3,13 +3,13 @@
 ## Creating cluster templates
 
 By default, Atmosphere deploys a set of images for Kubernetes. These cover a
-range of Kubernetes versions, from 1.25.11 to 1.27.3. You can create the
-cluster templates for them with the following command:
+range of Kubernetes versions, from 1.33.12 to 1.36.1, on Ubuntu 24.04. You can
+create the cluster templates for them with the following command:
 
 ```shell
-for version in v1.25.11 v1.26.6 v1.27.3; do
+for version in v1.33.12 v1.34.8 v1.35.5 v1.36.1; do
   openstack coe cluster template create \
-        --image $(openstack image show ubuntu-2204-kube-${version} -c id -f value) \
+        --image $(openstack image show ubuntu-2404-kube-${version} -c id -f value) \
         --external-network public \
         --dns-nameserver 8.8.8.8 \
         --master-lb-enabled \
