@@ -20,6 +20,20 @@
     namespace: openstack
   register: _rabbitmq_cluster
 
+- name: Assert that the RabbitMQ cluster can be upgraded directly
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_current_series | length > 0
+    - _rabbitmq_target_series | length > 0
+  ansible.builtin.assert:
+    that:
+      - _rabbitmq_current_series in _rabbitmq_upgrade_paths.get(_rabbitmq_target_series, [_rabbitmq_target_series])
+    fail_msg: >-
+      The RabbitMQ cluster "rabbitmq-{{ rabbitmq_cluster_name }}" runs RabbitMQ {{ _rabbitmq_current_series }},
+      which cannot be upgraded directly to RabbitMQ {{ _rabbitmq_target_series }}. Upgrade to the previous
+      Atmosphere release first.
+    quiet: true
+
 - name: Wait for confirmation if RabbitMQ cluster spec doesn't match
   when:
     - not rabbitmq_skip_spec_diff | bool

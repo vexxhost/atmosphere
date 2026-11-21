@@ -59,12 +59,16 @@ resources, replicas, persistence, and additional configuration.
      rabbitmq:
        additionalConfig: |
          deprecated_features.permit.management_metrics_collection = true
+         deprecated_features.permit.transient_nonexcl_queues = true
          vm_memory_high_watermark.relative = 0.9
 
 .. note::
 
    Setting ``rabbitmq.additionalConfig`` replaces the default value (it's not
    appended). If you override it, include any defaults you still want applied.
+   Keep ``deprecated_features.permit.transient_nonexcl_queues = true`` in
+   any override, since the OpenStack services need it and RabbitMQ 4.3 and
+   later reject their reply and fanout queues without it.
 
 *****************************
 Skipping spec diff approval
