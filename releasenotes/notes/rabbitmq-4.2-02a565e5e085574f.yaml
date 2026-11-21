@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    RabbitMQ is upgraded from 4.1.4 to 4.2.9. RabbitMQ 4.3 and later can only
+    be reached from 4.2, so this release must be deployed before upgrading to
+    the next major release. The deployment now stops before changing a
+    RabbitMQ cluster that cannot be upgraded directly to the new version.
+  - |
+    RabbitMQ now explicitly permits non-durable, non-exclusive queues, which
+    the OpenStack services use for replies and fanout. RabbitMQ 4.3 denies
+    them by default and needs the setting on every node before upgrading. If
+    you override ``rabbitmq.additionalConfig``, add
+    ``deprecated_features.permit.transient_nonexcl_queues = true`` to it.
