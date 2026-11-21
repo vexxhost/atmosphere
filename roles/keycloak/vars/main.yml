@@ -38,7 +38,8 @@ _keycloak_helm_values:
     - name: KC_DB
       value: mysql
     - name: KC_DB_URL
-      value: "jdbc:mysql://{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack:3306/{{ keycloak_database_name }}"
+      value: >-
+        jdbc:mysql://{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack:3306/{{ keycloak_database_name }}?sessionVariables=wsrep_sync_wait=1
     - name: KC_DB_USERNAME
       value: "{{ keycloak_database_username }}"
     - name: KC_DB_PASSWORD
