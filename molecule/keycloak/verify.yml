@@ -12,6 +12,47 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Assert Keycloak runs with the CVE-2026-114938 mitigation
+  hosts: controllers
+  become: true
+  tasks:
+    - name: Get Keycloak pods
+      run_once: true
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: auth-system
+        label_selectors:
+          - app.kubernetes.io/instance=keycloak
+          - app.kubernetes.io/component=keycloak
+      register: keycloak_pods
+
+    - name: Assert that Keycloak pods exist
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - keycloak_pods.resources | length > 0
+
+    - name: Get the effective Base64 intrinsics flag from the running JVM
+      run_once: true
+      kubernetes.core.k8s_exec:
+        namespace: auth-system
+        pod: "{{ item.metadata.name }}"
+        container: keycloak
+        command: jcmd io.quarkus.bootstrap.runner.QuarkusEntryPoint VM.flags -all
+      register: keycloak_jvm_flags
+      loop: "{{ keycloak_pods.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+
+    - name: Assert that Base64 intrinsics are disabled
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - item.stdout is search('UseBASE64Intrinsics\s+=\s+false\s')
+      loop: "{{ keycloak_jvm_flags.results }}"
+      loop_control:
+        label: "{{ item.item.metadata.name }}"
+
 - name: Create user and assert it exists inside Keystone
   hosts: all
   tasks:
