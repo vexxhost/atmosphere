@@ -1,6 +1,38 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+# NOTE: The operator only supports upgrades to the next minor version, so
+#       stop before changing anything if the running cluster is older.
+- name: Check that the Percona XtraDB Cluster operator can be upgraded directly
+  run_once: true
+  block:
+    - name: Get the Percona XtraDB cluster
+      kubernetes.core.k8s_info:
+        api_version: pxc.percona.com/v1
+        kind: PerconaXtraDBCluster
+        name: percona-xtradb
+        namespace: openstack
+      register: _pxc_operator_cluster
+      failed_when: false
+
+    - name: Assert that the operator can be upgraded directly
+      when:
+        - _pxc_operator_cluster.resources | default([]) | length > 0
+        - _pxc_operator_current_version is match('^[0-9]+\.[0-9]+\.[0-9]+$')
+        - _pxc_operator_target_version is match('^[0-9]+\.[0-9]+\.[0-9]+$')
+      vars:
+        _pxc_operator_current_version: "{{ _pxc_operator_cluster.resources[0].spec.crVersion | default('') }}"
+        _pxc_operator_target_version: "{{ atmosphere_images['percona_xtradb_cluster_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
+        _pxc_operator_minimum_version: >-
+          {{ _pxc_operator_target_version.split('.')[0] }}.{{ (_pxc_operator_target_version.split('.')[1] | int) - 1 }}.0
+      ansible.builtin.assert:
+        that:
+          - _pxc_operator_current_version is version(_pxc_operator_minimum_version, '>=')
+        fail_msg: >-
+          The Percona XtraDB cluster uses version {{ _pxc_operator_current_version }} of the operator, which cannot be
+          upgraded directly to {{ _pxc_operator_target_version }}. Upgrade to the previous Atmosphere release first.
+        quiet: true
+
 - name: Install all CRDs
   run_once: true
   changed_when: false
