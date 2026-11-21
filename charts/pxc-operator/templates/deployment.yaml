@@ -75,6 +75,16 @@ spec:
               value: "{{ .Values.s3WorkersLimit | default 10 }}"
             - name: PXCO_FEATURE_GATES
               value: {{ include "pxc-operator.featureGates" . | quote }}
+            - name: PXCO_LEADER_ELECTION_ENABLED
+              value: "{{ .Values.leaderElectionEnabled }}"
+            - name: PXCO_LEADER_ELECTION_LEASE_NAME
+              value: "{{ .Values.leaseName }}"
+            - name: PXCO_LEADER_ELECTION_LEASE_DURATION
+              value: "{{ .Values.leaseDuration }}"
+            - name: PXCO_LEADER_ELECTION_RENEW_DEADLINE
+              value: "{{ .Values.renewDeadline }}"
+            - name: PXCO_LEADER_ELECTION_RETRY_PERIOD
+              value: "{{ .Values.retryPeriod }}"
             {{- if .Values.extraEnvVars }}
               {{- toYaml .Values.extraEnvVars | nindent 12 }}
             {{- end }}
