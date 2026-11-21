@@ -1,0 +1,39 @@
+diff --git a/octavia/templates/deployment-api.yaml b/octavia/templates/deployment-api.yaml
+--- a/octavia/templates/deployment-api.yaml
++++ b/octavia/templates/deployment-api.yaml
+@@ -76,9 +76,11 @@
+           readinessProbe:
+             httpGet:
+               scheme: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-              path: /
++              path: /healthcheck
+               port: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+           volumeMounts:
++            - name: pod-tmp
++              mountPath: /tmp
+             - name: pod-etc-octavia
+               mountPath: /etc/octavia
+             - name: octavia-bin
+@@ -101,6 +103,8 @@
+             {{- end }}
+ {{ if $mounts_octavia_api.volumeMounts }}{{ toYaml $mounts_octavia_api.volumeMounts | indent 12 }}{{ end }}
+       volumes:
++        - name: pod-tmp
++          emptyDir: {}
+         - name: pod-etc-octavia
+           emptyDir: {}
+         - name: octavia-bin
+diff --git a/octavia/values.yaml b/octavia/values.yaml
+--- a/octavia/values.yaml
++++ b/octavia/values.yaml
+@@ -223,6 +223,10 @@
+     api_settings:
+       api_handler: queue_producer
+       bind_host: 0.0.0.0
++      healthcheck_enabled: true
++    healthcheck:
++      backends: disable_by_file
++      disable_by_file_path: /tmp/healthcheck_disable
+     database:
+       max_retries: -1
+     health_manager:
