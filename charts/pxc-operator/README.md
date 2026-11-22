@@ -19,14 +19,14 @@ To install the chart with the `pxc` release name using a dedicated namespace (re
 
 ```sh
 helm repo add percona https://percona.github.io/percona-helm-charts/
-helm install my-operator percona/pxc-operator --version 1.18.0 --namespace my-namespace
+helm install my-operator percona/pxc-operator --version 1.19.1 --namespace my-namespace
 ```
 
 The chart can be customized using the following configurable parameters:
 
 | Parameter                       | Description                                                                                    | Default                                          |
 | ------------------------------- | -----------------------------------------------------------------------------------------------| -------------------------------------------------|
-| `image`                         | PXC Operator Container image full path                                                         | `percona/percona-xtradb-cluster-operator:1.18.0` |
+| `image`                         | PXC Operator Container image full path                                                         | `percona/percona-xtradb-cluster-operator:1.19.1` |
 | `imagePullPolicy`               | PXC Operator Container pull policy                                                             | `Always`                                         |
 | `containerSecurityContext`      | PXC Operator Container securityContext                                                         | `{}`                                             |
 | `imagePullSecrets`              | PXC Operator Pod pull secret                                                                   | `[]`                                             |
@@ -38,12 +38,15 @@ The chart can be customized using the following configurable parameters:
 | `logStructured`                 | Force PXC operator to print JSON-wrapped log messages                                          | `false`                                          |
 | `logLevel`                      | PXC Operator logging level                                                                     | `INFO`                                           |
 | `disableTelemetry`              | Disable sending PXC Operator telemetry data to Percona                                         | `false`                                          |
+| `maxConcurrentReconciles`       | Limits the number of parallel cluster reconciles                                               | `1`                                              |
+| `s3WorkersLimit`                | Adjusts the maximum number of parallel workers used for S3 client                              | `10`                                             |
 | `watchAllNamespaces`            | Watch all namespaces (Install cluster-wide)                                                    | `false`                                          |
 | `watchNamespace`                | Comma separated list of namespace(s) to watch when different from release namespace            | `""`                                             |
 | `createNamespace`               | Create the watched namespace(s)                                                                | `false`                                          |
 | `rbac.create`                   | If false RBAC will not be created. RBAC resources will need to be created manually             | `true`                                           |
 | `serviceAccount.create`         | If false the ServiceAccounts will not be created. The ServiceAccounts must be created manually | `true`                                           |
 | `extraEnvVars`                  | Custom pod environment variables                                                               | `[]`                                             |
+| `featureGates.xtrabackupSidecar`| Enable the Xtrabackup Sidecar feature                                                          | `false`                                          |
 
 Specify parameters using `--set key=value[,key=value]` argument to `helm install`
 
