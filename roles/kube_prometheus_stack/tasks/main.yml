@@ -71,6 +71,10 @@
     realm: "{{ kube_prometheus_stack_keycloak_realm }}"
     display_name: "{{ kube_prometheus_stack_keycloak_realm_name }}"
     enabled: true
+  register: kube_prometheus_stack_keycloak_realm_result
+  retries: 10
+  delay: 10
+  until: kube_prometheus_stack_keycloak_realm_result is not failed
 
 - name: Add client roles in "id_token"
   no_log: true
@@ -119,6 +123,10 @@
           jsonType.label: String
           multivalued: "true"
           user.attribute: foo
+  register: kube_prometheus_stack_keycloak_clientscope_result
+  retries: 10
+  delay: 10
+  until: kube_prometheus_stack_keycloak_clientscope_result is not failed
 
 - name: Retrieve "etcd" CA certificate
   run_once: true
@@ -217,7 +225,10 @@
         config:
           included.client.audience: "{{ secret.password.item.id }}"
           access.token.claim: true
-
+  register: kube_prometheus_stack_keycloak_client_result
+  retries: 10
+  delay: 10
+  until: kube_prometheus_stack_keycloak_client_result is not failed
   loop: "{{ kube_prometheus_stack_client_secrets.results }}"
   loop_control:
     label: "{{ secret.password.item.id }}"
@@ -238,6 +249,10 @@
     realm: "{{ kube_prometheus_stack_keycloak_realm }}"
     client_id: "{{ item.0.id }}"
     name: "{{ item.1 }}"
+  register: kube_prometheus_stack_keycloak_role_result
+  retries: 10
+  delay: 10
+  until: kube_prometheus_stack_keycloak_role_result is not failed
   loop: "{{ kube_prometheus_stack_keycloak_clients | subelements('roles') }}"
   loop_control:
     label: "{{ item.0.id }}-{{ item.1 }}"
