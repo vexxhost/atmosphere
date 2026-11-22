@@ -1,0 +1,99 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# NOTE: Multi-node variant of the "upgrade" scenario: one controller (which
+#       also runs Ceph and the network gateway) and two compute nodes. The
+#       workload starts on the first compute node and is live-migrated to the
+#       second one after the upgrade.
+
+- name: Prepare the nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Configure short hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    - name: Ensure hostname inside hosts file
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
+    - name: Resolve every node by its hostname
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '\s{{ item }}$'
+        line: "{{ hostvars[item]['nodepool']['private_ipv4'] }} {{ item }}"
+      loop: "{{ groups['all'] }}"
+
+    - name: Install "dirmngr" and the network tools
+      ansible.builtin.apt:
+        name:
+          - dirmngr
+          - iputils-ping
+        state: present
+        update_cache: true
+
+    - name: Purge "snapd" package
+      when: ansible_distribution | lower == 'ubuntu'
+      ansible.builtin.apt:
+        name: snapd
+        state: absent
+        purge: true
+
+# NOTE: The management network (10.96.240.0/24) spans all nodes through a
+#       VXLAN overlay on "br-mgmt", with unicast flooding to every other node.
+- name: Set up the management network
+  hosts: all
+  become: true
+  vars:
+    _mgmt_address: "10.96.240.{{ 11 + groups['all'].index(inventory_hostname) }}"
+    _mgmt_local: "{{ nodepool.private_ipv4 }}"
+    _mgmt_peers: >-
+      {{ groups['all'] | difference([inventory_hostname])
+         | map('extract', hostvars, ['nodepool', 'private_ipv4']) | list }}
+  tasks:
+    - name: Create the management bridge and overlay
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          ip link show br-mgmt >/dev/null 2>&1 || ip link add name br-mgmt type bridge
+          if ! ip link show vxlan-mgmt >/dev/null 2>&1; then
+            ip link add vxlan-mgmt type vxlan id 4240 dstport 4790 local {{ _mgmt_local }} nolearning
+          fi
+          {% for peer in _mgmt_peers %}
+          bridge fdb append 00:00:00:00:00:00 dev vxlan-mgmt dst {{ peer }}
+          {% endfor %}
+          ip link set vxlan-mgmt master br-mgmt
+          ip link set vxlan-mgmt mtu 1450
+          ip link set br-mgmt mtu 1450
+          ip addr replace {{ _mgmt_address }}/24 dev br-mgmt
+          ip link set vxlan-mgmt up
+          ip link set br-mgmt up
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Check that every node is reachable on the management network
+      ansible.builtin.command:
+        cmd: ping -c 3 -W 2 10.96.240.{{ 11 + item }}
+      loop: "{{ range(groups['all'] | length) | list }}"
+      changed_when: false
+
+- name: Generate workspace
+  ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
+  vars:
+    workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    domain_name: "{{ hostvars[groups['controllers'][0]]['ansible_default_ipv4']['address'].replace('.', '-') }}.nip.io"
+
+- name: Create fake devices for Ceph
+  ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+
+- name: Prepare system for Neutron
+  ansible.builtin.import_playbook: ../shared/prepare/neutron.yml
+
+- name: Deploy the previous release
+  ansible.builtin.import_playbook: ../upgrade/deploy-base.yml
+
+- name: Create and watch the workload
+  ansible.builtin.import_playbook: ../upgrade/workload.yml
