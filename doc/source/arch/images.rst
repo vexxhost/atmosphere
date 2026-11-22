@@ -2,96 +2,73 @@
 Images
 ======
 
-*************
-Build Process
-*************
+Atmosphere deploys every service from container images pinned by digest. This
+page describes how the OpenStack service images and the hypervisor image are
+built. :doc:`../deploy/images` describes how to pull them through a registry
+cache or mirror.
 
-This section provides an overview of how the container images used by Atmosphere
-are built. Understanding this process is crucial for maintaining and customizing
-the images for your specific needs.
+************************
+OpenStack service images
+************************
 
-Multi-Stage Builds
-==================
+Starting with Atmosphere 8.x (OpenStack 2026.1), the OpenStack service images
+are built from source on Debian 13 (``debian:13-slim``) with Python 3.13. Each
+major release has its own stream of images, published as
+``ghcr.io/vexxhost/<service>:<release>``, for example ``nova:2026.1`` for
+Atmosphere 8.x and ``nova:2026.2`` for Atmosphere 9.x. Every build is also
+published under an immutable ``<release>-<commit>`` tag, and Atmosphere pins
+each image by digest, so a release always deploys the images it was tested
+with.
 
-The images are built using a multi-stage build process. This means that all
-build-time dependencies are included only in the intermediate stages and are not
-present in the final runtime images.
+Each image is built in stages:
 
-Benefits
---------
+* A shared base image installs Python and the Python packages that every
+  service uses, from a lock file with pinned versions and hashes.
+* A builder stage builds the service and its plugins into wheels from their
+  Git sources.
+* The final image adds the operating system packages the service needs and
+  installs its wheels on top of the base image.
 
-The multi-stage build process offers several benefits which improve the
-efficiency, security, and performance of the images.
+Compilers and other build tools stay in the builder stage, so the final images
+only contain what the services need at run time. Every image is built for
+``amd64`` and ``arm64`` and smoke tested before it is published.
 
-Smaller Image Size
-^^^^^^^^^^^^^^^^^^
+Changes that Atmosphere needs before upstream releases them are carried in
+VEXXHOST forks of the OpenStack projects, as a short list of commits on top of
+the upstream stable branch. Every change that a release carries is also carried
+by the next release unless upstream has merged it, so upgrading never drops a
+fix.
 
-By excluding build-time dependencies, the final images are significantly
-smaller. This reduction in size offers several advantages.
+****************
+Hypervisor image
+****************
 
-First, it leads to more efficient storage usage, as smaller images consume less
-disk space, making it easier to manage and store multiple images. Additionally,
-the reduced image size results in faster download times when pulling images from
-a container registry, thereby speeding up deployment times.
+The ``libvirtd`` image runs libvirt and QEMU on the compute nodes. It is built
+on Ubuntu with the Ubuntu Cloud Archive, since live migration needs QEMU
+versions and machine types that stay compatible between hosts. VEXXHOST
+rebuilds Ubuntu's QEMU package with a small number of patches, such as one that
+keeps live migration working between AMD hosts that run different kernel
+versions.
 
-Furthermore, smaller images require less network bandwidth, which can be beneficial
-in environments with limited network resources.
+.. list-table::
+   :header-rows: 1
 
-Enhanced Security
-^^^^^^^^^^^^^^^^^
+   * - Atmosphere
+     - Base
+     - libvirt
+     - QEMU
+   * - 7.x (2025.2)
+     - Ubuntu 24.04
+     - 10.0.0
+     - 8.2.2
+   * - 8.x (2026.1)
+     - Ubuntu 24.04
+     - 10.0.0
+     - 8.2.2
+   * - 9.x (2026.2)
+     - Ubuntu 26.04
+     - 12.0.0
+     - 10.2.1
 
-Reducing the number of packages and dependencies in the final image decreases
-the attack surface, thereby enhancing security. With only essential runtime
-dependencies included, the opportunities for attackers to exploit
-vulnerabilities are significantly reduced, leading to minimized exposure.
-
-Moreover, a smaller set of packages simplifies auditing, making it easier to
-ensure that all components are secure and up-to-date. Additionally, fewer
-dependencies mean fewer updates and patches, which simplifies the maintenance
-process and reduces the risk of introducing new vulnerabilities.
-
-Improved Performance
-^^^^^^^^^^^^^^^^^^^^
-
-Smaller images lead to faster deployment times and lower resource consumption,
-which improves overall system performance. Containers based on smaller images
-start up more quickly, enhancing the responsiveness of applications and services.
-
-Reduced resource consumption translates to lower memory and CPU usage, allowing
-more efficient utilization of system resources. Furthermore, faster deployment
-and efficient resource use enable better scalability, allowing the system to
-handle increased loads more effectively.
-
-Example
--------
-
-The ``openstack-venv-builder`` image is used to build a virtual environment with
-all of the Python dependencies required by the OpenStack services.  It also
-contains a modified version of the ``upper-constraints.txt`` file, which has
-many of the dependencies pinned to specific versions and modified to avoid
-security vulnerabilities.
-
-.. literalinclude:: ../../../images/openstack-venv-builder/Dockerfile
-   :language: dockerfile
-   :caption: ``images/openstack-venv-builder/Dockerfile``
-
-In addition to that image, the ``openstack-python-runtime`` image is a stripped
-down base image as a run-time for OpenStack services with no installed
-packages than the base Ubuntu image.
-
-.. literalinclude:: ../../../images/openstack-runtime/Dockerfile
-   :language: dockerfile
-   :caption: ``images/openstack-runtime/Dockerfile``
-
-With the ``openstack-venv-builder`` & ``openstack-python-runtime`` the image for
-a project such as OpenStack Nova can be built using the following Dockerfile.
-
-This Dockerfile uses the ``openstack-venv-builder`` image to build the virtual
-environment and then copies the virtual environment into the final image based
-on the ``openstack-python-runtime`` image.  With this, it has no other build-time
-dependencies and only the runtime dependencies required for the OpenStack Nova
-service.
-
-.. literalinclude:: ../../../images/nova/Dockerfile
-   :language: dockerfile
-   :caption: ``images/nova/Dockerfile``
+Upgrading from 7.x to 8.x keeps the same libvirt and QEMU versions. See
+:doc:`../admin/upgrading` for live migration when upgrading to 9.x.
