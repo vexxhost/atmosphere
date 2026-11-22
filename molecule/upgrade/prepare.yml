@@ -1,0 +1,296 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# NOTE: This scenario follows OpenStack's grenade. The previous release is
+#       deployed from a second checkout of this repository (the "base"),
+#       resources that must survive the upgrade are created and watched, the
+#       converge step upgrades to the change under test, and verify checks
+#       that the resources survived.
+
+- name: Prepare the node
+  ansible.builtin.import_playbook: ../aio/prepare.yml
+
+- name: Deploy the previous release
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars.yml
+  vars:
+    _upgrade_project_dir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+  tasks:
+    - name: Find the branch under test
+      ansible.builtin.command:
+        cmd: git rev-parse --abbrev-ref HEAD
+        chdir: "{{ _upgrade_project_dir }}"
+      register: _upgrade_current_branch
+      changed_when: false
+
+    - name: List the release branches
+      when: upgrade_from | length == 0
+      ansible.builtin.command:
+        cmd: git ls-remote --heads {{ upgrade_repository }} refs/heads/stable/*
+      register: _upgrade_remote_branches
+      changed_when: false
+
+    - name: Select the release to upgrade from
+      vars:
+        _upgrade_releases: >-
+          {{ _upgrade_remote_branches.stdout_lines | default([])
+             | select('match', '.*refs/heads/stable/[0-9]{4}\.[0-9]$')
+             | map('regex_replace', '^.*refs/heads/stable/', '') | list | community.general.version_sort }}
+        _upgrade_current_release: >-
+          {{ _upgrade_current_branch.stdout | regex_replace('^stable/', '')
+             if _upgrade_current_branch.stdout is match('^stable/[0-9]{4}\.[0-9]$') else '' }}
+        _upgrade_older_releases: >-
+          {{ _upgrade_releases | select('version', _upgrade_current_release, '<') | list
+             if _upgrade_current_release | length > 0 else _upgrade_releases }}
+      ansible.builtin.set_fact:
+        _upgrade_from_ref: >-
+          {{ upgrade_from if upgrade_from | length > 0 else 'stable/' ~ (_upgrade_older_releases | last) }}
+
+    - name: Check out the release to upgrade from
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          ref="{{ _upgrade_from_ref | trim }}"
+          if git rev-parse --verify --quiet "refs/heads/${ref}^{commit}" >/dev/null; then
+            rev=$(git rev-parse "refs/heads/${ref}")
+          else
+            git fetch --quiet --no-tags "{{ upgrade_repository }}" "${ref}"
+            rev=$(git rev-parse FETCH_HEAD)
+          fi
+          if [ -d "{{ upgrade_base_dir }}" ]; then
+            git worktree remove --force "{{ upgrade_base_dir }}"
+          fi
+          git worktree add --detach "{{ upgrade_base_dir }}" "${rev}"
+          echo "${ref} $(git -C "{{ upgrade_base_dir }}" log -1 --format='%H %s')"
+        chdir: "{{ _upgrade_project_dir }}"
+        executable: /bin/bash
+      register: _upgrade_base_checkout
+      changed_when: true
+
+    - name: Show the release to upgrade from
+      ansible.builtin.debug:
+        msg: "Upgrading from {{ _upgrade_base_checkout.stdout_lines | last }}"
+
+    # NOTE: The previous release gets its own collections path, with the
+    #       dependencies resolved from Ansible Galaxy like an installation of
+    #       that release would.
+    - name: Build and install the collection of the previous release
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          # NOTE: Molecule points Ansible at the collections of the change under
+          #       test; Galaxy would skip any dependency found there.
+          for var in $(env | grep -o '^ANSIBLE_[A-Z_]*'); do unset "${var}"; done
+          export ANSIBLE_COLLECTIONS_PATH="{{ upgrade_work_dir }}/collections"
+          rm -rf "{{ upgrade_work_dir }}/dist" "{{ upgrade_work_dir }}/collections"
+          ansible-galaxy collection build --force --output-path "{{ upgrade_work_dir }}/dist" "{{ upgrade_base_dir }}"
+          for attempt in 1 2 3; do
+            ansible-galaxy collection install --force \
+              --collections-path "{{ upgrade_work_dir }}/collections" \
+              "{{ upgrade_work_dir }}"/dist/vexxhost-atmosphere-*.tar.gz && break
+            [ "${attempt}" -lt 3 ] && sleep 10
+          done
+          ansible-galaxy collection list --collections-path "{{ upgrade_work_dir }}/collections"
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Configure Ansible for the previous release
+      ansible.builtin.copy:
+        dest: "{{ upgrade_work_dir }}/ansible.cfg"
+        mode: "0644"
+        content: |
+          [defaults]
+          collections_path = {{ upgrade_work_dir }}/collections
+          callbacks_enabled = ansible.posix.profile_tasks
+          host_key_checking = False
+          forks = 20
+
+          [ssh_connection]
+          pipelining = True
+          ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+
+    - name: Create the log directory
+      ansible.builtin.file:
+        path: "{{ upgrade_log_dir }}"
+        state: directory
+        mode: "0755"
+
+    # NOTE: The release manifest that CI built for the change under test is
+    #       cleared so the previous release deploys the images it shipped with.
+    - name: Deploy the previous release
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          for var in $(env | grep -o '^ANSIBLE_[A-Z_]*'); do unset "${var}"; done
+          export ANSIBLE_CONFIG="{{ upgrade_work_dir }}/ansible.cfg"
+          ansible-playbook \
+            --inventory "{{ _upgrade_project_dir }}/inventory.yaml" \
+            --extra-vars '{"atmosphere_release_manifest": ""}' \
+            "{{ upgrade_base_dir }}/molecule/aio/converge.yml" 2>&1 | tee "{{ upgrade_log_dir }}/base-deploy.log"
+        chdir: "{{ upgrade_base_dir }}"
+        executable: /bin/bash
+      changed_when: true
+
+- name: Create resources that must survive the upgrade
+  hosts: controllers[0]
+  become: true
+  vars_files:
+    - vars.yml
+  module_defaults:
+    group/openstack.cloud.openstack:
+      cloud: atmosphere
+  tasks:
+    - name: Create the state directory
+      ansible.builtin.file:
+        path: "{{ upgrade_state_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Generate an SSH key for the workload
+      community.crypto.openssh_keypair:
+        path: "{{ upgrade_state_dir }}/id_rsa"
+        type: rsa
+        size: 2048
+      register: _upgrade_ssh_key
+
+    - name: Create a key pair
+      openstack.cloud.keypair:
+        name: upgrade
+        public_key: "{{ _upgrade_ssh_key.public_key }}"
+
+    - name: Create a security group
+      openstack.cloud.security_group:
+        name: upgrade
+
+    - name: Allow ICMP and SSH to the workload
+      openstack.cloud.security_group_rule:
+        security_group: upgrade
+        protocol: "{{ item.protocol }}"
+        port_range_min: "{{ item.port | default(omit) }}"
+        port_range_max: "{{ item.port | default(omit) }}"
+        remote_ip_prefix: 0.0.0.0/0
+      loop:
+        - protocol: icmp
+        - protocol: tcp
+          port: 22
+
+    - name: Create a private network
+      openstack.cloud.network:
+        name: upgrade
+
+    - name: Create a private subnet
+      openstack.cloud.subnet:
+        name: upgrade
+        network_name: upgrade
+        cidr: 192.168.250.0/24
+        dns_nameservers:
+          - 1.1.1.1
+
+    - name: Create a router to the public network
+      openstack.cloud.router:
+        name: upgrade
+        network: public
+        interfaces:
+          - upgrade
+
+    - name: Create the workload server
+      openstack.cloud.server:
+        name: upgrade
+        image: cirros
+        flavor: m1.tiny
+        network: upgrade
+        key_name: upgrade
+        security_groups:
+          - upgrade
+        auto_ip: false
+        wait: true
+        timeout: 900
+      register: _upgrade_server
+
+    - name: Attach a floating IP to the workload server
+      openstack.cloud.floating_ip:
+        server: upgrade
+        network: public
+        wait: true
+        timeout: 300
+      register: _upgrade_floating_ip
+
+    - name: Create a volume
+      openstack.cloud.volume:
+        name: upgrade
+        size: 1
+        wait: true
+
+    - name: Attach the volume to the workload server
+      openstack.cloud.server_volume:
+        server: upgrade
+        volume: upgrade
+        wait: true
+
+    - name: Set the workload address
+      ansible.builtin.set_fact:
+        _upgrade_address: "{{ _upgrade_floating_ip.floating_ip.floating_ip_address }}"
+
+    - name: Write data to the volume and record the boot ID
+      ansible.builtin.command:
+        cmd: >-
+          ssh -i {{ upgrade_state_dir }}/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+          -o ConnectTimeout=10 cirros@{{ _upgrade_address }}
+          'sudo dd if=/dev/urandom of=/dev/vdb bs=1M count=16 conv=fsync 2>/dev/null &&
+          sudo dd if=/dev/vdb bs=1M count=16 2>/dev/null | md5sum | cut -d" " -f1 &&
+          cat /proc/sys/kernel/random/boot_id'
+      register: _upgrade_workload
+      retries: 60
+      delay: 10
+      until: _upgrade_workload.rc == 0 and _upgrade_workload.stdout_lines | length == 2
+      changed_when: true
+
+    - name: Create an application credential
+      openstack.cloud.application_credential:
+        name: upgrade
+      register: _upgrade_application_credential
+      no_log: true
+
+    - name: Save the state of the workload
+      ansible.builtin.copy:
+        dest: "{{ upgrade_state_dir }}/state.json"
+        mode: "0600"
+        content: >-
+          {{
+            {
+              'server_id': _upgrade_server.server.id,
+              'address': _upgrade_address,
+              'volume_checksum': _upgrade_workload.stdout_lines[0],
+              'boot_id': _upgrade_workload.stdout_lines[1],
+              'application_credential_id': _upgrade_application_credential.application_credential.id,
+              'application_credential_secret': _upgrade_application_credential.application_credential.secret,
+            } | to_nice_json
+          }}
+      no_log: true
+
+    - name: Install the tools for the watchers
+      ansible.builtin.apt:
+        name:
+          - curl
+          - iputils-ping
+        update_cache: true
+
+    # NOTE: The watchers run for the whole upgrade and are stopped in verify.
+    - name: Start watching the workload and the API
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          mkdir -p "{{ upgrade_log_dir }}"
+          setsid nohup ping -D -O -i 1 "{{ _upgrade_address }}" \
+            > "{{ upgrade_log_dir }}/workload-ping.log" 2>&1 < /dev/null &
+          echo $! > "{{ upgrade_state_dir }}/ping.pid"
+          setsid nohup bash -c 'while true; do
+              printf "%s %s\n" "$(date +%s)" "$(curl -sk -o /dev/null -m 5 -w "%{http_code}" "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3")"
+              sleep 5
+            done' > "{{ upgrade_log_dir }}/keystone-api.log" 2>&1 < /dev/null &
+          echo $! > "{{ upgrade_state_dir }}/api.pid"
+        executable: /bin/bash
+      changed_when: true
