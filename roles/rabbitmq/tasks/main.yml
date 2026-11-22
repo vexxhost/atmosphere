@@ -61,6 +61,34 @@
     pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
     command: rabbitmqctl enable_feature_flag all
 
+# NOTE: RabbitMQ 4.3 and later only support the Khepri metadata store, so
+#       migrate to it while the cluster still runs the previous release.
+- name: Switch the RabbitMQ metadata store to Khepri before upgrading
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+    - _rabbitmq_target_series | length > 0
+    - _rabbitmq_target_series is version('4.3', '>=')
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+  block:
+    - name: Enable the Khepri metadata store
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl enable_feature_flag khepri_db
+
+    - name: Assert that the Khepri metadata store is enabled
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl list_feature_flags --silent --formatter json name state
+      register: _rabbitmq_feature_flags
+      changed_when: false
+      failed_when: >-
+        (_rabbitmq_feature_flags.stdout | from_json | selectattr('name', 'equalto', 'khepri_db')
+         | map(attribute='state') | first | default('')) != 'enabled'
+
 - name: Deploy cluster
   kubernetes.core.k8s:
     state: present
