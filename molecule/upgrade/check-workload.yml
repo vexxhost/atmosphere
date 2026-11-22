@@ -136,7 +136,7 @@
 
     - name: Run the Compute upgrade checks
       ansible.builtin.command:
-        cmd: kubectl -n openstack exec deploy/nova-api-osapi -c nova-osapi -- nova-status upgrade check --json
+        cmd: kubectl -n openstack exec deploy/nova-api-osapi -c nova-osapi -- nova-status upgrade check
       environment:
         KUBECONFIG: /root/.kube/config
       register: _upgrade_nova_status
@@ -145,33 +145,31 @@
       #       so the results are checked one by one below.
       failed_when: _upgrade_nova_status.rc not in [0, 1, 2]
 
-    - name: Find the report of the Compute upgrade checks
+    - name: Find the results of the Compute upgrade checks
       ansible.builtin.set_fact:
-        _upgrade_nova_report: >-
-          {{ (_upgrade_nova_status.stdout ~ '\n' ~ _upgrade_nova_status.stderr)
-             | regex_search('[{]"name".*[}]') | default('', true) }}
+        _upgrade_nova_results: >-
+          {{ _upgrade_nova_status.stdout
+             | regex_findall('\| Check: (.+?)\s*\|\s*\n\| Result: (\w+)', multiline=True) }}
 
-    - name: Assert that the Compute upgrade checks produced a report
+    - name: Assert that the Compute upgrade checks produced results
       ansible.builtin.assert:
         that:
-          - _upgrade_nova_report | length > 0
-        fail_msg: "nova-status did not print a JSON report: {{ _upgrade_nova_status.stdout }} {{ _upgrade_nova_status.stderr }}"
+          - _upgrade_nova_results | length > 0
+        fail_msg: "nova-status did not print any results: {{ _upgrade_nova_status.stdout }} {{ _upgrade_nova_status.stderr }}"
 
     # NOTE: The chart renders an empty policy as "{}", which is valid JSON, so
     #       the policy file check always reports a failure even though no
-    #       policy is overridden. Ansible may already have turned the report
-    #       into a mapping.
+    #       policy is overridden.
     - name: Assert that the Compute upgrade checks passed
       vars:
-        _results: >-
-          {{ (_upgrade_nova_report if _upgrade_nova_report is mapping
-              else (_upgrade_nova_report | from_json)).checks }}
         _failed: >-
-          {{ _results | selectattr('result', 'ge', 2)
-             | rejectattr('check', 'equalto', 'Policy File JSON to YAML Migration')
+          {{ _upgrade_nova_results
+             | selectattr('1', 'equalto', 'Failure')
+             | map('first')
+             | reject('equalto', 'Policy File JSON to YAML Migration')
              | list }}
       ansible.builtin.assert:
         that:
           - _failed | length == 0
-        fail_msg: "Compute upgrade checks failed: {{ _failed | to_json }}"
-        success_msg: "{{ _results | map(attribute='check') | zip(_results | map(attribute='result')) | list | to_json }}"
+        fail_msg: "Compute upgrade checks failed: {{ _failed | join(', ') }}"
+        success_msg: "{{ _upgrade_nova_results | map('join', ': ') | join(', ') }}"
