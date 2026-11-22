@@ -1,0 +1,52 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Check that the resources survived the upgrade
+  ansible.builtin.import_playbook: ../upgrade/check-workload.yml
+
+# NOTE: The workload was started before the upgrade, so it still runs the
+#       QEMU of the previous release. Live-migrating it to the other compute
+#       node, which runs the new libvirt and QEMU, checks that guests can move
+#       from the previous release to the new one.
+- name: Live-migrate the workload to the other compute node
+  hosts: controllers[0]
+  become: true
+  vars_files:
+    - ../upgrade/vars.yml
+  tasks:
+    - name: Live-migrate the workload server
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -
+        stdin: |
+          import time
+          import openstack
+
+          conn = openstack.connect(cloud="atmosphere")
+          server = conn.compute.find_server("upgrade", ignore_missing=False)
+          source = server.compute_host
+          hosts = sorted(s.host for s in conn.compute.services() if s.binary == "nova-compute")
+          target = next(h for h in hosts if h != source)
+          conn.compute.live_migrate_server(server, host=target, block_migration="auto")
+          deadline = time.time() + 900
+          while time.time() < deadline:
+              server = conn.compute.get_server(server.id)
+              if server.status == "ERROR":
+                  raise SystemExit(f"live migration failed: {server.fault}")
+              if server.status == "ACTIVE" and not server.task_state and server.compute_host == target:
+                  break
+              time.sleep(5)
+          else:
+              raise SystemExit(f"live migration did not finish, server is {server.status} on {server.compute_host}")
+          print(f"{source} {target}")
+      register: _upgrade_live_migration
+      changed_when: true
+
+    - name: Show the live migration
+      ansible.builtin.debug:
+        msg: "Live-migrated the workload from {{ _upgrade_live_migration.stdout.split()[0] }} to {{ _upgrade_live_migration.stdout.split()[1] }}"
+
+- name: Check the workload after the live migration
+  ansible.builtin.import_playbook: ../upgrade/check-workload.yml
+
+- name: Run Tempest tests
+  ansible.builtin.import_playbook: vexxhost.atmosphere.tempest

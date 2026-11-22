@@ -1,0 +1,174 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create resources that must survive the upgrade
+  hosts: controllers[0]
+  become: true
+  vars_files:
+    - vars.yml
+  module_defaults:
+    group/openstack.cloud.openstack:
+      cloud: atmosphere
+  tasks:
+    # NOTE: The workspace is generated earlier in this same run, and Ansible
+    #       only reads the inventory's group_vars when the run starts.
+    - name: Load the generated workspace variables
+      ansible.builtin.include_vars:
+        dir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/all"
+
+    - name: Create the state directory
+      ansible.builtin.file:
+        path: "{{ upgrade_state_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Generate an SSH key for the workload
+      community.crypto.openssh_keypair:
+        path: "{{ upgrade_state_dir }}/id_rsa"
+        type: rsa
+        size: 2048
+      register: _upgrade_ssh_key
+
+    - name: Create a key pair
+      openstack.cloud.keypair:
+        name: upgrade
+        public_key: "{{ _upgrade_ssh_key.public_key }}"
+
+    - name: Create a security group
+      openstack.cloud.security_group:
+        name: upgrade
+
+    - name: Allow ICMP and SSH to the workload
+      openstack.cloud.security_group_rule:
+        security_group: upgrade
+        protocol: "{{ item.protocol }}"
+        port_range_min: "{{ item.port | default(omit) }}"
+        port_range_max: "{{ item.port | default(omit) }}"
+        remote_ip_prefix: 0.0.0.0/0
+      loop:
+        - protocol: icmp
+        - protocol: tcp
+          port: 22
+
+    - name: Create a private network
+      openstack.cloud.network:
+        name: upgrade
+
+    - name: Create a private subnet
+      openstack.cloud.subnet:
+        name: upgrade
+        network_name: upgrade
+        cidr: 192.168.250.0/24
+        dns_nameservers:
+          - 1.1.1.1
+
+    - name: Create a router to the public network
+      openstack.cloud.router:
+        name: upgrade
+        network: public
+        interfaces:
+          - upgrade
+
+    # NOTE: openstack.cloud.server always passes "tags", which the openstacksdk
+    #       packaged in Ubuntu 24.04 does not accept, so the server, its
+    #       floating IP and its volume are created with the openstacksdk cloud
+    #       layer directly.
+    - name: Create the workload server with a floating IP and a volume
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -
+        stdin: |
+          import json
+          import os
+
+          import openstack
+
+          conn = openstack.connect(cloud="atmosphere")
+          kwargs = {}
+          if os.environ.get("UPGRADE_AVAILABILITY_ZONE"):
+              kwargs["availability_zone"] = os.environ["UPGRADE_AVAILABILITY_ZONE"]
+          server = conn.create_server(
+              "upgrade",
+              image="cirros",
+              flavor="m1.tiny",
+              network="upgrade",
+              key_name="upgrade",
+              security_groups=["upgrade"],
+              auto_ip=False,
+              wait=True,
+              timeout=900,
+              **kwargs,
+          )
+          fip = conn.create_floating_ip(network="public", server=server, wait=True, timeout=300)
+          volume = conn.create_volume(size=1, name="upgrade", wait=True, timeout=300)
+          conn.attach_volume(server, volume, wait=True, timeout=300)
+          print(json.dumps({"id": server.id, "address": fip["floating_ip_address"]}))
+      environment:
+        UPGRADE_AVAILABILITY_ZONE: "{{ upgrade_server_availability_zone | default('', true) }}"
+      register: _upgrade_server_result
+      changed_when: true
+
+    - name: Set the workload server facts
+      ansible.builtin.set_fact:
+        _upgrade_server_id: "{{ (_upgrade_server_result.stdout_lines | last | from_json).id }}"
+        _upgrade_address: "{{ (_upgrade_server_result.stdout_lines | last | from_json).address }}"
+
+    - name: Write data to the volume and record the boot ID
+      ansible.builtin.command:
+        cmd: >-
+          ssh -i {{ upgrade_state_dir }}/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+          -o ConnectTimeout=10 cirros@{{ _upgrade_address }}
+          'sudo dd if=/dev/urandom of=/dev/vdb bs=1M count=16 conv=fsync 2>/dev/null &&
+          sudo dd if=/dev/vdb bs=1M count=16 2>/dev/null | md5sum | cut -d" " -f1 &&
+          cat /proc/sys/kernel/random/boot_id'
+      register: _upgrade_workload
+      retries: 60
+      delay: 10
+      until: _upgrade_workload.rc == 0 and _upgrade_workload.stdout_lines | length == 2
+      changed_when: true
+
+    - name: Create an application credential
+      openstack.cloud.application_credential:
+        name: upgrade
+      register: _upgrade_application_credential
+      no_log: true
+
+    - name: Save the state of the workload
+      ansible.builtin.copy:
+        dest: "{{ upgrade_state_dir }}/state.json"
+        mode: "0600"
+        content: >-
+          {{
+            {
+              'server_id': _upgrade_server_id,
+              'address': _upgrade_address,
+              'volume_checksum': _upgrade_workload.stdout_lines[0],
+              'boot_id': _upgrade_workload.stdout_lines[1],
+              'application_credential_id': _upgrade_application_credential.application_credential.id,
+              'application_credential_secret': _upgrade_application_credential.application_credential.secret,
+            } | to_nice_json
+          }}
+      no_log: true
+
+    - name: Install the tools for the watchers
+      ansible.builtin.apt:
+        name:
+          - curl
+          - iputils-ping
+        update_cache: true
+
+    # NOTE: The watchers run for the whole upgrade and are stopped in verify.
+    - name: Start watching the workload and the API
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          mkdir -p "{{ upgrade_log_dir }}"
+          setsid nohup ping -D -O -i 1 "{{ _upgrade_address }}" \
+            > "{{ upgrade_log_dir }}/workload-ping.log" 2>&1 < /dev/null &
+          echo $! > "{{ upgrade_state_dir }}/ping.pid"
+          setsid nohup bash -c 'while true; do
+              printf "%s %s\n" "$(date +%s)" "$(curl -sk -o /dev/null -m 5 -w "%{http_code}" "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3")"
+              sleep 5
+            done' > "{{ upgrade_log_dir }}/keystone-api.log" 2>&1 < /dev/null &
+          echo $! > "{{ upgrade_state_dir }}/api.pid"
+        executable: /bin/bash
+      changed_when: true
