@@ -108,6 +108,35 @@
   ansible.builtin.debug:
     msg: "{{ _tempest_log.log_lines }}"
 
+- name: DNM collect keepalived state change debug data
+  ansible.builtin.shell: |
+    set +e
+    mkdir -p /tmp/logs/system/dnm-l3
+    for pod in $(kubectl -n openstack get pods -l component=l3-agent -o name); do
+      n=$(basename $pod)
+      kubectl -n openstack exec $pod -c neutron-l3-agent -- sh -c '
+        echo "== id"; id
+        echo "== which"; for c in curl ps mkfifo awk ip sh dash; do printf "%s " $c; command -v $c || echo MISSING; done
+        echo "== script"; ls -la /var/lib/openstack/bin/neutron-keepalived-state-change; head -1 /var/lib/openstack/bin/neutron-keepalived-state-change
+        echo "== processes"; ps -eo pid,ppid,user,etime,args | grep -E "keepalived|state-change|ip -o monitor|rootwrap" | grep -v grep
+        echo "== pids"; ls -la /var/lib/neutron/external/pids/ 2>&1 | head -40
+        echo "== ha_confs"; ls -la /var/lib/neutron/ha_confs/*/ 2>&1 | head -60
+        for f in /var/lib/neutron/ha_confs/*/neutron-keepalived-state-change.log; do echo "== $f"; tail -60 "$f"; done
+        for f in /var/lib/neutron/ha_confs/*/state; do echo "== $f: $(cat $f)"; done
+        echo "== socket"; ls -la /var/lib/neutron/keepalived-state-change 2>&1
+        echo "== sudoers"; cat /etc/sudoers.d/* 2>&1 | head -20
+      ' > /tmp/logs/system/dnm-l3/$n.txt 2>&1
+      kubectl -n openstack exec $pod -c neutron-l3-agent -- sh -c '
+        r=$(ls /var/lib/neutron/ha_confs | head -1)
+        echo "== manual run for $r"; mkdir -p /tmp/dnm-$r
+        timeout 20 sudo /var/lib/openstack/bin/neutron-rootwrap /etc/neutron/rootwrap.conf neutron-keepalived-state-change --router_id $r --namespace qrouter-$r --conf_dir /tmp/dnm-$r --log-file /tmp/dnm-$r/log --monitor_interface lo --monitor_cidr 127.0.0.1/8 --pid_file /tmp/dnm-$r/pid --state_path /var/lib/neutron --user $(id -u) --group $(id -g) --debug; echo "rc=$?"
+      ' >> /tmp/logs/system/dnm-l3/$n.txt 2>&1
+    done
+  environment:
+    KUBECONFIG: /root/.kube/config
+  changed_when: false
+  failed_when: false
+
 - name: Fail when tempest result is failed
   ansible.builtin.fail:
     msg: "Tempest failed!"
