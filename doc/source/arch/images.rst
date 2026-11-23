@@ -15,10 +15,9 @@ Starting with Atmosphere 8.x (OpenStack 2026.1), the OpenStack service images
 are built from source on Debian 13 (``debian:13-slim``) with Python 3.13. Each
 major release has its own stream of images, published as
 ``ghcr.io/vexxhost/<service>:<release>``, for example ``nova:2026.1`` for
-Atmosphere 8.x and ``nova:2026.2`` for Atmosphere 9.x. Every build is also
-published under an immutable ``<release>-<commit>`` tag, and Atmosphere pins
-each image by digest, so a release always deploys the images it was tested
-with.
+Atmosphere 8.x. Every build is also published under an immutable
+``<release>-<commit>`` tag, and Atmosphere pins each image by digest, so a
+release always deploys the images it was tested with.
 
 Each image is built in stages:
 
@@ -65,10 +64,7 @@ versions.
      - Ubuntu 24.04
      - 10.0.0
      - 8.2.2
-   * - 9.x (2026.2)
-     - Ubuntu 26.04
-     - 12.0.0
-     - 10.2.1
 
-Upgrading from 7.x to 8.x keeps the same libvirt and QEMU versions. See
-:doc:`../admin/upgrading` for live migration when upgrading to 9.x.
+Upgrading from 7.x to 8.x keeps the same libvirt and QEMU versions, so
+instances can live-migrate in both directions between upgraded compute nodes
+and nodes that still run 7.x.
