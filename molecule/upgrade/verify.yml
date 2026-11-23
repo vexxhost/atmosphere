@@ -4,38 +4,5 @@
 - name: Check that the resources survived the upgrade
   ansible.builtin.import_playbook: check-workload.yml
 
-- name: DNM collect Cinder scheduling diagnostics
-  hosts: controllers[0]
-  become: true
-  tasks:
-    - name: DNM dump Cinder services, pools and Ceph usage
-      ansible.builtin.shell: |
-        set +e
-        out=/tmp/logs/system/atmosphere-upgrade/cinder-debug.txt
-        mkdir -p $(dirname $out)
-        {
-          echo "== openstacksdk"
-          /usr/bin/python3 - <<'PY'
-        import openstack
-        conn = openstack.connect(cloud="atmosphere")
-        for s in conn.block_storage.services():
-            print("service", s.binary, s.host, s.status, s.state, s.updated_at, s.availability_zone, getattr(s, "cluster", None), getattr(s, "frozen", None))
-        for p in conn.block_storage.backend_pools(details=True):
-            print("pool", p.name, p.capabilities)
-        for t in conn.block_storage.types():
-            print("type", t.name, t.extra_specs)
-        PY
-          echo "== ceph df"
-          kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph df 2>&1 || kubectl -n openstack exec deploy/cinder-volume -c cinder-volume -- ceph -n client.cinder df 2>&1
-          echo "== ceph status"
-          kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph -s 2>&1
-          echo "== cinder-manage service list"
-          kubectl -n openstack exec deploy/cinder-api -c cinder-api -- cinder-manage service list 2>&1
-        } > $out 2>&1
-      environment:
-        KUBECONFIG: /root/.kube/config
-      changed_when: false
-      failed_when: false
-
 - name: Run Tempest tests
   ansible.builtin.import_playbook: vexxhost.atmosphere.tempest
