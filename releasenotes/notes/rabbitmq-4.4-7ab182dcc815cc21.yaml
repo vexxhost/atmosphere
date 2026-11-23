@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    RabbitMQ is upgraded from 4.2.9 to 4.4.1. RabbitMQ 4.3 and later only
+    support the Khepri metadata store, so the deployment enables Khepri on
+    every existing RabbitMQ cluster before upgrading it. A cluster needs a
+    majority of its nodes online to stay available. Once every node runs the
+    new release, the deployment enables its feature flags; until then the
+    cluster cannot route fanout messages through the exchanges that OpenStack
+    services declare. The upgrade also recreates every virtual host, keeping its
+    permissions and policies, to remove leftovers of the move to Khepri that
+    stop exchanges from routing; OpenStack services reconnect and declare their
+    queues and exchanges again.

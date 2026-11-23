@@ -1,3 +1,29 @@
 - project:
     templates:
       - atmosphere-molecule-ubuntu-noble-jobs
+    check:
+      jobs:
+        - atmosphere-molecule-ubuntu-noble-aio-upgrade-openvswitch:
+            dependencies: [atmosphere-release-manifest]
+            voting: false
+            vars:
+              molecule_environment:
+                ATMOSPHERE_UPGRADE_FROM: dnm/8.x-integration
+        - atmosphere-molecule-ubuntu-noble-aio-upgrade-ovn:
+            dependencies: [atmosphere-release-manifest]
+            voting: false
+            vars:
+              molecule_environment:
+                ATMOSPHERE_UPGRADE_FROM: dnm/8.x-integration
+        - atmosphere-molecule-ubuntu-noble-multinode-upgrade-openvswitch:
+            dependencies: [atmosphere-release-manifest]
+            voting: false
+            vars:
+              molecule_environment:
+                ATMOSPHERE_UPGRADE_FROM: dnm/8.x-integration
+        - atmosphere-molecule-ubuntu-noble-multinode-upgrade-ovn:
+            dependencies: [atmosphere-release-manifest]
+            voting: false
+            vars:
+              molecule_environment:
+                ATMOSPHERE_UPGRADE_FROM: dnm/8.x-integration
