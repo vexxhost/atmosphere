@@ -41,6 +41,8 @@
   retries: 10
   delay: 5
 
+# NOTE: The database can still restart while an upgrade rolls out new
+#       Percona XtraDB Cluster pods, even after one successful check above.
 - name: Create Keycloak database
   run_once: true
   community.mysql.mysql_db:
@@ -48,6 +50,10 @@
     login_user: root
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
     name: "{{ keycloak_database_name }}"
+  register: _keycloak_database
+  retries: 30
+  delay: 10
+  until: _keycloak_database is not failed
 
 - name: Create a Keycloak user
   run_once: true
@@ -59,6 +65,10 @@
     password: "{{ keycloak_database_password }}"
     host: "%"
     priv: "{{ keycloak_database_name }}.*:ALL"
+  register: _keycloak_database_user
+  retries: 30
+  delay: 10
+  until: _keycloak_database_user is not failed
 
 # NOTE(mnaser): Keycloak schema migrations write to tables without a primary
 #               key, which strict mode rejects. The mode must match on every
