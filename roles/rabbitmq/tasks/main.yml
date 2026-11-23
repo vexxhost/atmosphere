@@ -159,3 +159,109 @@
         | selectattr('stability', 'equalto', 'stable')
         | rejectattr('state', 'equalto', 'enabled')
         | list | length > 0
+
+# NOTE: Moving from Mnesia to Khepri (on 4.2) and then restarting the nodes on
+#       a Khepri-only release leaves the tree nodes of deleted auto-delete
+#       exchanges behind under their stale bindings. Re-declaring such an
+#       exchange then fails to update the exchange projection, so the exchange
+#       does not route anything. OpenStack services declare all of their
+#       topology themselves, so recreate every virtual host with its
+#       permissions and policies to drop the stale tree nodes.
+- name: Recreate the virtual hosts after moving to the Khepri metadata store
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+    - _rabbitmq_current_series | length > 0
+    - _rabbitmq_target_series | length > 0
+    - _rabbitmq_current_series is version('4.3', '<')
+    - _rabbitmq_target_series is version('4.3', '>=')
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+    _rabbitmq_pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+  block:
+    - name: List the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: rabbitmqctl list_vhosts --silent --formatter json name
+      register: _rabbitmq_vhosts
+      changed_when: false
+
+    - name: Read the permissions of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl list_permissions --silent --formatter json -p {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+      register: _rabbitmq_vhost_permissions
+      changed_when: false
+
+    - name: Read the policies of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl list_policies --silent --formatter json -p {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+      register: _rabbitmq_vhost_policies
+      changed_when: false
+
+    - name: Start the list of permissions and policies to restore
+      ansible.builtin.set_fact:
+        _rabbitmq_restore_permissions: []
+        _rabbitmq_restore_policies: []
+
+    - name: Collect the permissions to restore
+      ansible.builtin.set_fact:
+        _rabbitmq_restore_permissions: >-
+          {{ _rabbitmq_restore_permissions
+             + (item.stdout | default('[]', true) | from_json | map('combine', {'vhost': item.item}) | list) }}
+      loop: "{{ _rabbitmq_vhost_permissions.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Collect the policies to restore
+      ansible.builtin.set_fact:
+        _rabbitmq_restore_policies: >-
+          {{ _rabbitmq_restore_policies
+             + (item.stdout | default('[]', true) | from_json | map('combine', {'vhost': item.item}) | list) }}
+      loop: "{{ _rabbitmq_vhost_policies.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Delete the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl delete_vhost {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+
+    - name: Create the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl add_vhost {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+
+    - name: Restore the permissions of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: >-
+          rabbitmqctl set_permissions -p {{ item.vhost | quote }} {{ item.user | quote }}
+          {{ item.configure | quote }} {{ item.write | quote }} {{ item.read | quote }}
+      loop: "{{ _rabbitmq_restore_permissions }}"
+      loop_control:
+        label: "{{ item.vhost }}: {{ item.user }}"
+
+    - name: Restore the policies of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: >-
+          rabbitmqctl set_policy -p {{ item.vhost | quote }}
+          --priority {{ item.priority | string | quote }} --apply-to {{ item['apply-to'] | quote }}
+          {{ item.name | quote }} {{ item.pattern | quote }}
+          {{ (item.definition if item.definition is string else item.definition | to_json) | quote }}
+      loop: "{{ _rabbitmq_restore_policies }}"
+      loop_control:
+        label: "{{ item.vhost }}: {{ item.name }}"
