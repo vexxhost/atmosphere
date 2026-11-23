@@ -108,3 +108,54 @@
   retries: 3
   delay: 5
   until: _rabbitmq_cluster_deployment is not failed
+
+# NOTE: Feature flags introduced by a release can only be enabled once every
+#       node runs it. Until then the cluster stays in a compatibility mode in
+#       which, for example, auto-delete exchanges are not recorded, so fanout
+#       RPC messages (such as the volume service's capacity reports to the
+#       Block Storage scheduler) are silently dropped after an upgrade.
+- name: Enable the feature flags of the new RabbitMQ release
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+  block:
+    - name: Wait for every RabbitMQ node to run the new release
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "rabbitmq-{{ rabbitmq_cluster_name }}-server"
+        namespace: openstack
+      register: _rabbitmq_statefulset
+      retries: 120
+      delay: 10
+      until:
+        - _rabbitmq_statefulset.resources | length > 0
+        - _rabbitmq_statefulset.resources[0].status.updateRevision is defined
+        - _rabbitmq_statefulset.resources[0].status.currentRevision | default('') == _rabbitmq_statefulset.resources[0].status.updateRevision
+        - _rabbitmq_statefulset.resources[0].status.updatedReplicas | default(0) == _rabbitmq_statefulset.resources[0].spec.replicas
+        - _rabbitmq_statefulset.resources[0].status.readyReplicas | default(0) == _rabbitmq_statefulset.resources[0].spec.replicas
+
+    - name: Enable all feature flags
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl enable_feature_flag all
+      register: _rabbitmq_enable_feature_flags
+      retries: 30
+      delay: 10
+      until: _rabbitmq_enable_feature_flags is not failed
+
+    - name: Assert that every stable feature flag is enabled
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl list_feature_flags --silent --formatter json name state stability
+      register: _rabbitmq_feature_flags_after
+      changed_when: false
+      failed_when: >-
+        _rabbitmq_feature_flags_after.stdout | from_json
+        | selectattr('stability', 'equalto', 'stable')
+        | rejectattr('state', 'equalto', 'enabled')
+        | list | length > 0
