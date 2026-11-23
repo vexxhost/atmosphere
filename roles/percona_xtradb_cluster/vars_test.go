@@ -54,7 +54,7 @@ func TestPerconaXtraDBClusterSpec(t *testing.T) {
 func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.PXC.Size)
 	assert.Equal(t, true, *vars.PerconaXtraDBClusterSpec.PXC.AutoRecovery)
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.42-33.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.45-36.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
@@ -116,7 +116,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.HAProxy.Enabled)
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.HAProxy.Size)
 
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/haproxy:2.8.15", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/haproxy:2.8.18", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
@@ -131,14 +131,27 @@ func TestPerconaXtraDBClusterHAProxyConfiguration(t *testing.T) {
 	//               the file from the Docker image, replace the maxconn value and
 	//               then compare it.
 
-	// Get the default HAproxy configuration
-	configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", vars.PerconaXtraDBClusterSpec.CRVersion)
-	resp, err := http.Get(configFileUrl)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	haproxyConfigData, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	haproxyConfig := string(haproxyConfigData)
+	// Get the default HAproxy configuration. Patch releases of the operator are
+	// not always tagged in percona-docker, so fall back to the minor release.
+	versions := []string{vars.PerconaXtraDBClusterSpec.CRVersion}
+	if parts := strings.Split(vars.PerconaXtraDBClusterSpec.CRVersion, "."); len(parts) == 3 && parts[2] != "0" {
+		versions = append(versions, fmt.Sprintf("%s.%s.0", parts[0], parts[1]))
+	}
+
+	var haproxyConfig string
+	for _, version := range versions {
+		configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", version)
+		resp, err := http.Get(configFileUrl)
+		require.NoError(t, err)
+		haproxyConfigData, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		require.NoError(t, err)
+		if resp.StatusCode == http.StatusOK {
+			haproxyConfig = string(haproxyConfigData)
+			break
+		}
+	}
+	require.NotEmpty(t, haproxyConfig, "no HAProxy configuration found for %v", versions)
 
 	// Replace the 4 spaces at the start of each line
 	regex := regexp.MustCompile("(?m)^    ")

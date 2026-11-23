@@ -19,15 +19,15 @@ To install the chart with the `pxc` release name using a dedicated namespace (re
 
 ```sh
 helm repo add percona https://percona.github.io/percona-helm-charts/
-helm install my-operator percona/pxc-operator --version 1.18.0 --namespace my-namespace
+helm install my-operator percona/pxc-operator --version 1.20.0 --namespace my-namespace
 ```
 
 The chart can be customized using the following configurable parameters:
 
 | Parameter                       | Description                                                                                    | Default                                          |
 | ------------------------------- | -----------------------------------------------------------------------------------------------| -------------------------------------------------|
-| `image`                         | PXC Operator Container image full path                                                         | `percona/percona-xtradb-cluster-operator:1.18.0` |
-| `imagePullPolicy`               | PXC Operator Container pull policy                                                             | `Always`                                         |
+| `image`                         | PXC Operator Container image full path                                                         | `percona/percona-xtradb-cluster-operator:1.20.0` |
+| `imagePullPolicy`               | PXC Operator Container pull policy                                                             | `IfNotPresent`                                   |
 | `containerSecurityContext`      | PXC Operator Container securityContext                                                         | `{}`                                             |
 | `imagePullSecrets`              | PXC Operator Pod pull secret                                                                   | `[]`                                             |
 | `replicaCount`                  | PXC Operator Pod quantity                                                                      | `1`                                              |
@@ -38,12 +38,20 @@ The chart can be customized using the following configurable parameters:
 | `logStructured`                 | Force PXC operator to print JSON-wrapped log messages                                          | `false`                                          |
 | `logLevel`                      | PXC Operator logging level                                                                     | `INFO`                                           |
 | `disableTelemetry`              | Disable sending PXC Operator telemetry data to Percona                                         | `false`                                          |
+| `maxConcurrentReconciles`       | Limits the number of parallel cluster reconciles                                               | `1`                                              |
+| `s3WorkersLimit`                | Adjusts the maximum number of parallel workers used for S3 client                              | `10`                                             |
 | `watchAllNamespaces`            | Watch all namespaces (Install cluster-wide)                                                    | `false`                                          |
 | `watchNamespace`                | Comma separated list of namespace(s) to watch when different from release namespace            | `""`                                             |
 | `createNamespace`               | Create the watched namespace(s)                                                                | `false`                                          |
 | `rbac.create`                   | If false RBAC will not be created. RBAC resources will need to be created manually             | `true`                                           |
 | `serviceAccount.create`         | If false the ServiceAccounts will not be created. The ServiceAccounts must be created manually | `true`                                           |
 | `extraEnvVars`                  | Custom pod environment variables                                                               | `[]`                                             |
+| `featureGates.xtrabackupSidecar`| Enable the Xtrabackup Sidecar feature                                                          | `false`                                          |
+| `leaderElectionEnabled`         | Enable leader election for the operator (ensures only one active instance)                     | `true`                                           |
+| `leaseName`                     | Custom lease name for leader election (must be a valid DNS subdomain); uses operator name if empty | `""`                                         |
+| `leaseDuration`                 | Duration that non-leader candidates wait before forcing leader acquisition                     | `60s`                                            |
+| `renewDeadline`                 | Duration the acting leader retries refreshing its leadership before giving up                  | `40s`                                            |
+| `retryPeriod`                   | Duration clients should wait between attempts to acquire or renew the leader lease             | `10s`                                            |
 
 Specify parameters using `--set key=value[,key=value]` argument to `helm install`
 
@@ -51,6 +59,33 @@ Alternatively a YAML file that specifies the values for the parameters can be pr
 
 ```sh
 helm install pxc-operator -f values.yaml percona/pxc-operator
+```
+
+## Unit Tests
+
+Helm unit tests for operator charts use the `helm-unittest` plugin.
+
+Install the plugin from the repository root:
+
+```sh
+make helm-unittest
+```
+
+Unit tests for this chart live under `charts/pxc-operator/tests/` and validate
+the rendered operator manifests. Prefer focused tests: start with the default
+rendered structure, then add one test per optional or conditional value to
+verify that setting the value in `values.yaml` renders the expected field.
+
+Run this chart's unit tests with:
+
+```sh
+make test-pxc-operator
+```
+
+The `HELM` variable can be overridden when a different Helm binary is needed:
+
+```sh
+make HELM=/path/to/helm test-pxc-operator
 ```
 
 ## Deploy the database

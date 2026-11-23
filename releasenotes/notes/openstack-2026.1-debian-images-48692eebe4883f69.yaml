@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    The OpenStack service images are now built for OpenStack 2026.1 on
+    Debian 13 with Python 3.13. Review any image overrides in your inventory
+    before upgrading, since images built for an older release or another
+    distribution are no longer compatible.
+  - |
+    Keystone now loads its WSGI application from ``/var/www/cgi-bin/keystone/wsgi.py``,
+    which the Helm chart provides, since the ``keystone-wsgi-public`` script
+    is no longer shipped. Update ``WSGIScriptAlias`` in any custom
+    ``wsgi_keystone`` override to use the new path.
+  - |
+    The Compute API, metadata and scheduler services now run with native
+    threads by default, following the upstream default for OpenStack 2026.1.
