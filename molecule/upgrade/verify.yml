@@ -8,34 +8,46 @@
   hosts: controllers[0]
   become: true
   tasks:
-    - name: DNM dump Cinder services, pools and Ceph usage
+    - name: DNM dump state and try remedies
       ansible.builtin.shell: |
         set +e
         out=/tmp/logs/system/atmosphere-upgrade/cinder-debug.txt
         mkdir -p $(dirname $out)
-        {
-          echo "== openstacksdk"
+        pools() {
           /usr/bin/python3 - <<'PY'
         import openstack
         conn = openstack.connect(cloud="atmosphere")
-        for s in conn.block_storage.services():
-            print("service", s.binary, s.host, s.status, s.state, s.updated_at, s.availability_zone, getattr(s, "cluster", None), getattr(s, "frozen", None))
-        for p in conn.block_storage.backend_pools(details=True):
-            print("pool", p.name, p.capabilities)
-        for t in conn.block_storage.types():
-            print("type", t.name, t.extra_specs)
+        pools = list(conn.block_storage.backend_pools(details=True))
+        print("pools:", len(pools), [p.name for p in pools])
         PY
-          echo "== ceph df"
-          kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph df 2>&1 || kubectl -n openstack exec deploy/cinder-volume -c cinder-volume -- ceph -n client.cinder df 2>&1
-          echo "== ceph status"
-          kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph -s 2>&1
-          echo "== rabbitmq cinder"
-          for c in "list_queues name type durable auto_delete exclusive messages consumers" "list_exchanges name type durable" "list_bindings source_name destination_name routing_key" "list_consumers queue_name channel_pid"; do
-            echo "-- rabbitmqctl $c"
-            kubectl -n openstack exec rabbitmq-cinder-server-0 -c rabbitmq -- rabbitmqctl -q -p cinder $c 2>&1 | grep -E "scheduler|volume|name|source" | head -60
-          done
-          echo "== cinder-manage service list"
-          kubectl -n openstack exec deploy/cinder-api -c cinder-api -- cinder-manage service list 2>&1
+        }
+        rmq() {
+          kubectl -n openstack exec rabbitmq-cinder-server-0 -c rabbitmq -- rabbitmqctl -q -p cinder "$@" 2>&1
+        }
+        dump() {
+          echo "== $1 $(date -u +%T)"
+          pools
+          echo "-- exchanges"; rmq list_exchanges name type durable auto_delete internal
+          echo "-- bindings from fanout exchanges"; rmq list_bindings source_name destination_name | grep -i fanout
+          echo "-- queues"; rmq list_queues name durable auto_delete messages consumers | grep -E 'scheduler|volume'
+        }
+        restart_cinder() {
+          kubectl -n openstack rollout restart deploy/cinder-scheduler deploy/cinder-volume
+          kubectl -n openstack rollout status deploy/cinder-scheduler --timeout=600s
+          kubectl -n openstack rollout status deploy/cinder-volume --timeout=600s
+          sleep 150
+        }
+        {
+          dump "after upgrade"
+          echo "-- rabbitmq versions/flags"; kubectl -n openstack exec rabbitmq-cinder-server-0 -c rabbitmq -- rabbitmqctl -q list_feature_flags name state 2>&1 | grep -iE 'khepri|disabled' | head
+          restart_cinder
+          dump "after restarting cinder-scheduler and cinder-volume"
+          kubectl -n openstack delete pod rabbitmq-cinder-server-0
+          sleep 20
+          kubectl -n openstack wait --for=condition=Ready pod/rabbitmq-cinder-server-0 --timeout=600s
+          kubectl -n openstack logs rabbitmq-cinder-server-0 -c rabbitmq 2>&1 | grep -E 'Could not find exchange type|transient queues' | head
+          restart_cinder
+          dump "after restarting RabbitMQ and then cinder"
         } > $out 2>&1
       environment:
         KUBECONFIG: /root/.kube/config
