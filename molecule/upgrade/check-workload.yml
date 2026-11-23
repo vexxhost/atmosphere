@@ -1,0 +1,175 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Check that the resources survived the upgrade
+  hosts: controllers[0]
+  become: true
+  vars_files:
+    - vars.yml
+  module_defaults:
+    group/openstack.cloud.openstack:
+      cloud: atmosphere
+  tasks:
+    - name: Stop watching the workload and the API
+      ansible.builtin.shell:
+        cmd: |
+          for pidfile in "{{ upgrade_state_dir }}"/*.pid; do
+            kill "$(cat "${pidfile}")" 2>/dev/null || true
+          done
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Load the state of the workload
+      ansible.builtin.slurp:
+        src: "{{ upgrade_state_dir }}/state.json"
+      register: _upgrade_state_file
+      no_log: true
+
+    - name: Parse the state of the workload
+      ansible.builtin.set_fact:
+        _upgrade_state: "{{ _upgrade_state_file.content | b64decode | from_json }}"
+      no_log: true
+
+    # NOTE: "ping -O" logs one line per unanswered probe (one per second) and
+    #       the API watcher logs one status code every 5 seconds.
+    - name: Measure the interruptions during the upgrade
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          awk '/no answer yet/ {miss++; total++; if (miss > max) max = miss; next}
+               /bytes from/ {miss = 0}
+               END {printf "%d %d\n", max, total}' "{{ upgrade_log_dir }}/workload-ping.log"
+          awk '$2 != "200" && $2 != "300" {miss++; total++; if (miss > max) max = miss; next}
+               {miss = 0}
+               END {printf "%d %d\n", max * 5, total * 5}' "{{ upgrade_log_dir }}/keystone-api.log"
+        executable: /bin/bash
+      register: _upgrade_interruptions
+      changed_when: false
+
+    - name: Report the interruptions during the upgrade
+      vars:
+        _workload: "{{ _upgrade_interruptions.stdout_lines[0].split() }}"
+        _api: "{{ _upgrade_interruptions.stdout_lines[1].split() }}"
+      block:
+        - name: Write the interruption summary
+          ansible.builtin.copy:
+            dest: "{{ upgrade_log_dir }}/summary.txt"
+            mode: "0644"
+            content: |
+              Workload (ping to floating IP): longest outage {{ _workload[0] }}s, {{ _workload[1] }}s in total
+              Keystone API: longest outage {{ _api[0] }}s, {{ _api[1] }}s in total
+
+        - name: Show the interruption summary
+          ansible.builtin.debug:
+            msg:
+              - "Workload (ping to floating IP): longest outage {{ _workload[0] }}s, {{ _workload[1] }}s in total"
+              - "Keystone API: longest outage {{ _api[0] }}s, {{ _api[1] }}s in total"
+
+        - name: Assert that the workload outage stayed within the limit
+          when: upgrade_max_dataplane_outage | int > 0
+          ansible.builtin.assert:
+            that:
+              - _workload[0] | int <= upgrade_max_dataplane_outage | int
+            fail_msg: >-
+              The workload was unreachable for {{ _workload[0] }} seconds in a row during the upgrade, more than
+              the allowed {{ upgrade_max_dataplane_outage }} seconds.
+
+    - name: Get the workload server
+      openstack.cloud.server_info:
+        name: upgrade
+      register: _upgrade_server_info
+
+    - name: Assert that the workload server is the same and still running
+      ansible.builtin.assert:
+        that:
+          - _upgrade_server_info.servers | length == 1
+          - _upgrade_server_info.servers[0].id == _upgrade_state.server_id
+          - _upgrade_server_info.servers[0].status == 'ACTIVE'
+
+    - name: Read the volume data and the boot ID
+      ansible.builtin.command:
+        cmd: >-
+          ssh -i {{ upgrade_state_dir }}/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+          -o ConnectTimeout=10 cirros@{{ _upgrade_state.address }}
+          'sudo dd if=/dev/vdb bs=1M count=16 2>/dev/null | md5sum | cut -d" " -f1 &&
+          cat /proc/sys/kernel/random/boot_id'
+      register: _upgrade_workload
+      retries: 30
+      delay: 10
+      until: _upgrade_workload.rc == 0 and _upgrade_workload.stdout_lines | length == 2
+      changed_when: false
+
+    - name: Assert that the workload kept running and kept its data
+      ansible.builtin.assert:
+        that:
+          - _upgrade_workload.stdout_lines[0] == _upgrade_state.volume_checksum
+          - _upgrade_workload.stdout_lines[1] == _upgrade_state.boot_id
+        fail_msg: >-
+          The workload server was rebooted or lost the data on its volume during the upgrade.
+
+    # NOTE: The connection is built without clouds.yaml, since merging the
+    #       admin cloud's password into an application credential fails.
+    - name: Authenticate with the application credential created before the upgrade
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -
+        stdin: |
+          import os
+          import openstack
+
+          conn = openstack.connect(
+              load_yaml_config=False,
+              load_envvars=False,
+              auth_type="v3applicationcredential",
+              auth={
+                  "auth_url": os.environ["UPGRADE_AUTH_URL"],
+                  "application_credential_id": os.environ["UPGRADE_APPLICATION_CREDENTIAL_ID"],
+                  "application_credential_secret": os.environ["UPGRADE_APPLICATION_CREDENTIAL_SECRET"],
+              },
+              cacert="/usr/local/share/ca-certificates/atmosphere.crt",
+          )
+          conn.authorize()
+      environment:
+        UPGRADE_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3"
+        UPGRADE_APPLICATION_CREDENTIAL_ID: "{{ _upgrade_state.application_credential_id }}"
+        UPGRADE_APPLICATION_CREDENTIAL_SECRET: "{{ _upgrade_state.application_credential_secret }}"
+      changed_when: false
+
+    - name: Run the Compute upgrade checks
+      ansible.builtin.command:
+        cmd: kubectl -n openstack exec deploy/nova-api-osapi -c nova-osapi -- nova-status upgrade check
+      environment:
+        KUBECONFIG: /root/.kube/config
+      register: _upgrade_nova_status
+      changed_when: false
+      # NOTE: The exit code is the worst result (0 success, 1 warning, 2 failure),
+      #       so the results are checked one by one below.
+      failed_when: _upgrade_nova_status.rc not in [0, 1, 2]
+
+    - name: Find the results of the Compute upgrade checks
+      ansible.builtin.set_fact:
+        _upgrade_nova_results: >-
+          {{ _upgrade_nova_status.stdout
+             | regex_findall('\| Check: (.+?)\s*\|\s*\n\| Result: (\w+)', multiline=True) }}
+
+    - name: Assert that the Compute upgrade checks produced results
+      ansible.builtin.assert:
+        that:
+          - _upgrade_nova_results | length > 0
+        fail_msg: "nova-status did not print any results: {{ _upgrade_nova_status.stdout }} {{ _upgrade_nova_status.stderr }}"
+
+    # NOTE: The chart renders an empty policy as "{}", which is valid JSON, so
+    #       the policy file check always reports a failure even though no
+    #       policy is overridden.
+    - name: Assert that the Compute upgrade checks passed
+      vars:
+        _failed: >-
+          {{ _upgrade_nova_results
+             | selectattr('1', 'equalto', 'Failure')
+             | map('first')
+             | reject('equalto', 'Policy File JSON to YAML Migration')
+             | list }}
+      ansible.builtin.assert:
+        that:
+          - _failed | length == 0
+        fail_msg: "Compute upgrade checks failed: {{ _failed | join(', ') }}"
+        success_msg: "{{ _upgrade_nova_results | map('join', ': ') | join(', ') }}"

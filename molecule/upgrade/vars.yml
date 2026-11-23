@@ -1,0 +1,20 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Repository that the release to upgrade from is fetched from when Zuul did not
+# prepare it.
+upgrade_repository: https://github.com/vexxhost/atmosphere
+
+# Git reference to upgrade from. When empty, the newest "stable/*" branch older
+# than the branch under test is used ("main" upgrades from the newest one).
+upgrade_from: "{{ lookup('env', 'ATMOSPHERE_UPGRADE_FROM') }}"
+
+upgrade_work_dir: "{{ lookup('env', 'HOME') }}/atmosphere-upgrade"
+upgrade_base_dir: "{{ upgrade_work_dir }}/base"
+upgrade_state_dir: /var/lib/atmosphere-upgrade
+upgrade_log_dir: /tmp/logs/system/atmosphere-upgrade
+
+# Longest interruption, in seconds, that the workload may see during the
+# upgrade. The interruption is always measured and reported; set this to a
+# positive value to also fail the job when it is exceeded.
+upgrade_max_dataplane_outage: 0

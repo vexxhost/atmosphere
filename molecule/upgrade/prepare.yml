@@ -1,0 +1,17 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# NOTE: This scenario follows OpenStack's grenade. The previous release is
+#       deployed from a second checkout of this repository (the "base"),
+#       resources that must survive the upgrade are created and watched, the
+#       converge step upgrades to the change under test, and verify checks
+#       that the resources survived.
+
+- name: Prepare the node
+  ansible.builtin.import_playbook: ../aio/prepare.yml
+
+- name: Deploy the previous release
+  ansible.builtin.import_playbook: deploy-base.yml
+
+- name: Create and watch the workload
+  ansible.builtin.import_playbook: workload.yml

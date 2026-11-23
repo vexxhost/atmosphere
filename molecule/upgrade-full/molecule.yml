@@ -1,0 +1,23 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+ansible:
+  cfg:
+    defaults:
+      callbacks_enabled: ansible.posix.profile_tasks
+    connection:
+      pipelining: true
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/inventory.yaml
+
+# NOTE: The previous release is deployed in "prepare" and upgraded in
+#       "converge". The idempotence of the new release is already covered by
+#       the "aio" scenario, so it is not run again here.
+scenario:
+  test_sequence:
+    - prepare
+    - converge
+    - verify
