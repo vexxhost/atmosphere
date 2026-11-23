@@ -29,11 +29,6 @@
           kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph df 2>&1 || kubectl -n openstack exec deploy/cinder-volume -c cinder-volume -- ceph -n client.cinder df 2>&1
           echo "== ceph status"
           kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph -s 2>&1
-          echo "== rabbitmq cinder"
-          for c in "list_queues name type durable auto_delete exclusive messages consumers" "list_exchanges name type durable" "list_bindings source_name destination_name routing_key" "list_consumers queue_name channel_pid"; do
-            echo "-- rabbitmqctl $c"
-            kubectl -n openstack exec rabbitmq-cinder-server-0 -c rabbitmq -- rabbitmqctl -q -p cinder $c 2>&1 | grep -E "scheduler|volume|name|source" | head -60
-          done
           echo "== cinder-manage service list"
           kubectl -n openstack exec deploy/cinder-api -c cinder-api -- cinder-manage service list 2>&1
         } > $out 2>&1
