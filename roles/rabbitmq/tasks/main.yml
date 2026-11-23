@@ -20,6 +20,20 @@
     namespace: openstack
   register: _rabbitmq_cluster
 
+- name: Assert that the RabbitMQ cluster can be upgraded directly
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_current_series | length > 0
+    - _rabbitmq_target_series | length > 0
+  ansible.builtin.assert:
+    that:
+      - _rabbitmq_current_series in _rabbitmq_upgrade_paths.get(_rabbitmq_target_series, [_rabbitmq_target_series])
+    fail_msg: >-
+      The RabbitMQ cluster "rabbitmq-{{ rabbitmq_cluster_name }}" runs RabbitMQ {{ _rabbitmq_current_series }},
+      which cannot be upgraded directly to RabbitMQ {{ _rabbitmq_target_series }}. Upgrade to the previous
+      Atmosphere release first.
+    quiet: true
+
 - name: Wait for confirmation if RabbitMQ cluster spec doesn't match
   when:
     - not rabbitmq_skip_spec_diff | bool
@@ -47,6 +61,34 @@
     pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
     command: rabbitmqctl enable_feature_flag all
 
+# NOTE: RabbitMQ 4.3 and later only support the Khepri metadata store, so
+#       migrate to it while the cluster still runs the previous release.
+- name: Switch the RabbitMQ metadata store to Khepri before upgrading
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+    - _rabbitmq_target_series | length > 0
+    - _rabbitmq_target_series is version('4.3', '>=')
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+  block:
+    - name: Enable the Khepri metadata store
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl enable_feature_flag khepri_db
+
+    - name: Assert that the Khepri metadata store is enabled
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl list_feature_flags --silent --formatter json name state
+      register: _rabbitmq_feature_flags
+      changed_when: false
+      failed_when: >-
+        (_rabbitmq_feature_flags.stdout | from_json | selectattr('name', 'equalto', 'khepri_db')
+         | map(attribute='state') | first | default('')) != 'enabled'
+
 - name: Deploy cluster
   kubernetes.core.k8s:
     state: present
@@ -66,3 +108,160 @@
   retries: 3
   delay: 5
   until: _rabbitmq_cluster_deployment is not failed
+
+# NOTE: Feature flags introduced by a release can only be enabled once every
+#       node runs it. Until then the cluster stays in a compatibility mode in
+#       which, for example, auto-delete exchanges are not recorded, so fanout
+#       RPC messages (such as the volume service's capacity reports to the
+#       Block Storage scheduler) are silently dropped after an upgrade.
+- name: Enable the feature flags of the new RabbitMQ release
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+  block:
+    - name: Wait for every RabbitMQ node to run the new release
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "rabbitmq-{{ rabbitmq_cluster_name }}-server"
+        namespace: openstack
+      register: _rabbitmq_statefulset
+      retries: 120
+      delay: 10
+      until:
+        - _rabbitmq_statefulset.resources | length > 0
+        - _rabbitmq_statefulset.resources[0].status.updateRevision is defined
+        - _rabbitmq_statefulset.resources[0].status.currentRevision | default('') == _rabbitmq_statefulset.resources[0].status.updateRevision
+        - _rabbitmq_statefulset.resources[0].status.updatedReplicas | default(0) == _rabbitmq_statefulset.resources[0].spec.replicas
+        - _rabbitmq_statefulset.resources[0].status.readyReplicas | default(0) == _rabbitmq_statefulset.resources[0].spec.replicas
+
+    - name: Enable all feature flags
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl enable_feature_flag all
+      register: _rabbitmq_enable_feature_flags
+      retries: 30
+      delay: 10
+      until: _rabbitmq_enable_feature_flags is not failed
+
+    - name: Assert that every stable feature flag is enabled
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+        command: rabbitmqctl list_feature_flags --silent --formatter json name state stability
+      register: _rabbitmq_feature_flags_after
+      changed_when: false
+      failed_when: >-
+        _rabbitmq_feature_flags_after.stdout | from_json
+        | selectattr('stability', 'equalto', 'stable')
+        | rejectattr('state', 'equalto', 'enabled')
+        | list | length > 0
+
+# NOTE: Moving from Mnesia to Khepri (on 4.2) and then restarting the nodes on
+#       a Khepri-only release leaves the tree nodes of deleted auto-delete
+#       exchanges behind under their stale bindings. Re-declaring such an
+#       exchange then fails to update the exchange projection, so the exchange
+#       does not route anything. OpenStack services declare all of their
+#       topology themselves, so recreate every virtual host with its
+#       permissions and policies to drop the stale tree nodes.
+- name: Recreate the virtual hosts after moving to the Khepri metadata store
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+    - _rabbitmq_current_series | length > 0
+    - _rabbitmq_target_series | length > 0
+    - _rabbitmq_current_series is version('4.3', '<')
+    - _rabbitmq_target_series is version('4.3', '>=')
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+    _rabbitmq_pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+  block:
+    - name: List the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: rabbitmqctl list_vhosts --silent --formatter json name
+      register: _rabbitmq_vhosts
+      changed_when: false
+
+    - name: Read the permissions of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl list_permissions --silent --formatter json -p {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+      register: _rabbitmq_vhost_permissions
+      changed_when: false
+
+    - name: Read the policies of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl list_policies --silent --formatter json -p {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+      register: _rabbitmq_vhost_policies
+      changed_when: false
+
+    - name: Start the list of permissions and policies to restore
+      ansible.builtin.set_fact:
+        _rabbitmq_restore_permissions: []
+        _rabbitmq_restore_policies: []
+
+    - name: Collect the permissions to restore
+      ansible.builtin.set_fact:
+        _rabbitmq_restore_permissions: >-
+          {{ _rabbitmq_restore_permissions
+             + (item.stdout | default('[]', true) | from_json | map('combine', {'vhost': item.item}) | list) }}
+      loop: "{{ _rabbitmq_vhost_permissions.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Collect the policies to restore
+      ansible.builtin.set_fact:
+        _rabbitmq_restore_policies: >-
+          {{ _rabbitmq_restore_policies
+             + (item.stdout | default('[]', true) | from_json | map('combine', {'vhost': item.item}) | list) }}
+      loop: "{{ _rabbitmq_vhost_policies.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Delete the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl delete_vhost {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+
+    - name: Create the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: "rabbitmqctl add_vhost {{ item | quote }}"
+      loop: "{{ _rabbitmq_reset_vhosts }}"
+
+    - name: Restore the permissions of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: >-
+          rabbitmqctl set_permissions -p {{ item.vhost | quote }} {{ item.user | quote }}
+          {{ item.configure | quote }} {{ item.write | quote }} {{ item.read | quote }}
+      loop: "{{ _rabbitmq_restore_permissions }}"
+      loop_control:
+        label: "{{ item.vhost }}: {{ item.user }}"
+
+    - name: Restore the policies of the virtual hosts
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ _rabbitmq_pod }}"
+        command: >-
+          rabbitmqctl set_policy -p {{ item.vhost | quote }}
+          --priority {{ item.priority | string | quote }} --apply-to {{ item['apply-to'] | quote }}
+          {{ item.name | quote }} {{ item.pattern | quote }}
+          {{ (item.definition if item.definition is string else item.definition | to_json) | quote }}
+      loop: "{{ _rabbitmq_restore_policies }}"
+      loop_control:
+        label: "{{ item.vhost }}: {{ item.name }}"
