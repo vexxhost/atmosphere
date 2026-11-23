@@ -1,0 +1,52 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Check that the extended workload survived the upgrade
+  hosts: controllers[0]
+  become: true
+  vars_files:
+    - ../upgrade/vars.yml
+  tasks:
+    - name: Load the state of the workloads
+      ansible.builtin.slurp:
+        src: "{{ upgrade_state_dir }}/{{ item }}"
+      loop:
+        - state.json
+        - extended.json
+      register: _upgrade_state_files
+      no_log: true
+
+    - name: Parse the state of the workloads
+      ansible.builtin.set_fact:
+        _upgrade_state: "{{ _upgrade_state_files.results[0].content | b64decode | from_json }}"
+        _upgrade_extended: "{{ _upgrade_state_files.results[1].content | b64decode | from_json }}"
+      no_log: true
+
+    - name: Check the load balancer
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -
+        stdin: |
+          import openstack
+
+          conn = openstack.connect(cloud="atmosphere")
+          lb = conn.load_balancer.get_load_balancer("{{ _upgrade_extended.lb_id }}")
+          problems = []
+          if lb.provisioning_status != "ACTIVE" or lb.operating_status != "ONLINE":
+              problems.append(f"load balancer is {lb.provisioning_status}/{lb.operating_status}")
+          if problems:
+              raise SystemExit("; ".join(problems))
+      changed_when: false
+
+    - name: Check that the load balancer still serves the same workload
+      ansible.builtin.uri:
+        url: "http://{{ _upgrade_extended.lb_address }}/"
+        return_content: true
+      register: _upgrade_lb_response
+      retries: 30
+      delay: 10
+      until: >-
+        _upgrade_lb_response.status == 200 and
+        _upgrade_state.boot_id in _upgrade_lb_response.content
+
+- name: Check the base workload and run Tempest
+  ansible.builtin.import_playbook: ../upgrade/verify.yml

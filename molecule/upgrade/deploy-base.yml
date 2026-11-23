@@ -1,0 +1,143 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy the previous release
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars.yml
+  vars:
+    _upgrade_project_dir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+  tasks:
+    - name: Find the branch under test
+      ansible.builtin.command:
+        cmd: git rev-parse --abbrev-ref HEAD
+        chdir: "{{ _upgrade_project_dir }}"
+      register: _upgrade_current_branch
+      changed_when: false
+
+    - name: List the release branches
+      when: upgrade_from | length == 0
+      ansible.builtin.command:
+        cmd: git ls-remote --heads {{ upgrade_repository }} refs/heads/stable/*
+      register: _upgrade_remote_branches
+      changed_when: false
+
+    - name: Select the release to upgrade from
+      vars:
+        _upgrade_releases: >-
+          {{ _upgrade_remote_branches.stdout_lines | default([])
+             | select('match', '.*refs/heads/stable/[0-9]{4}\.[0-9]$')
+             | map('regex_replace', '^.*refs/heads/stable/', '') | list | community.general.version_sort }}
+        _upgrade_current_release: >-
+          {{ _upgrade_current_branch.stdout | regex_replace('^stable/', '')
+             if _upgrade_current_branch.stdout is match('^stable/[0-9]{4}\.[0-9]$') else '' }}
+        _upgrade_older_releases: >-
+          {{ _upgrade_releases | select('version', _upgrade_current_release, '<') | list
+             if _upgrade_current_release | length > 0 else _upgrade_releases }}
+      ansible.builtin.set_fact:
+        _upgrade_from_ref: >-
+          {{ upgrade_from if upgrade_from | length > 0 else 'stable/' ~ (_upgrade_older_releases | last) }}
+
+    - name: Check out the release to upgrade from
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          ref="{{ _upgrade_from_ref | trim }}"
+          if git rev-parse --verify --quiet "refs/heads/${ref}^{commit}" >/dev/null; then
+            rev=$(git rev-parse "refs/heads/${ref}")
+          else
+            git fetch --quiet --no-tags "{{ upgrade_repository }}" "${ref}"
+            rev=$(git rev-parse FETCH_HEAD)
+          fi
+          if [ -d "{{ upgrade_base_dir }}" ]; then
+            git worktree remove --force "{{ upgrade_base_dir }}"
+          fi
+          git worktree add --detach "{{ upgrade_base_dir }}" "${rev}"
+          echo "${ref} $(git -C "{{ upgrade_base_dir }}" log -1 --format='%H %s')"
+        chdir: "{{ _upgrade_project_dir }}"
+        executable: /bin/bash
+      register: _upgrade_base_checkout
+      changed_when: true
+
+    - name: Show the release to upgrade from
+      ansible.builtin.debug:
+        msg: "Upgrading from {{ _upgrade_base_checkout.stdout_lines | last }}"
+
+    # NOTE: The previous release gets its own collections path, with the
+    #       dependencies resolved from Ansible Galaxy like an installation of
+    #       that release would.
+    - name: Build and install the collection of the previous release
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          # NOTE: Molecule points Ansible at the collections of the change under
+          #       test; Galaxy would skip any dependency found there.
+          for var in $(env | grep -o '^ANSIBLE_[A-Z_]*'); do unset "${var}"; done
+          export ANSIBLE_COLLECTIONS_PATH="{{ upgrade_work_dir }}/collections"
+          rm -rf "{{ upgrade_work_dir }}/dist" "{{ upgrade_work_dir }}/collections"
+          ansible-galaxy collection build --force --output-path "{{ upgrade_work_dir }}/dist" "{{ upgrade_base_dir }}"
+          installed=false
+          for attempt in 1 2 3; do
+            if ansible-galaxy collection install --force \
+                --collections-path "{{ upgrade_work_dir }}/collections" \
+                "{{ upgrade_work_dir }}"/dist/vexxhost-atmosphere-*.tar.gz; then
+              installed=true
+              break
+            fi
+            sleep 30
+          done
+          if [ "${installed}" != true ]; then
+            echo "Failed to install the collection of the previous release" >&2
+            exit 1
+          fi
+          test -f "{{ upgrade_work_dir }}/collections/ansible_collections/vexxhost/atmosphere/playbooks/ceph.yml"
+          ansible-galaxy collection list --collections-path "{{ upgrade_work_dir }}/collections"
+        executable: /bin/bash
+      changed_when: true
+
+    - name: Configure Ansible for the previous release
+      ansible.builtin.copy:
+        dest: "{{ upgrade_work_dir }}/ansible.cfg"
+        mode: "0644"
+        content: |
+          [defaults]
+          collections_path = {{ upgrade_work_dir }}/collections
+          callbacks_enabled = ansible.posix.profile_tasks
+          host_key_checking = False
+          forks = 20
+
+          [ssh_connection]
+          pipelining = True
+          ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+
+    - name: Create the log directory
+      ansible.builtin.file:
+        path: "{{ upgrade_log_dir }}"
+        state: directory
+        mode: "0755"
+
+    # NOTE: The release manifest that CI built for the change under test is
+    #       cleared so the previous release deploys the images it shipped with.
+    #       Fixes for flaky deployments cannot be added to a released branch
+    #       here, so a failed deployment is run once more before giving up.
+    - name: Deploy the previous release
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          for var in $(env | grep -o '^ANSIBLE_[A-Z_]*'); do unset "${var}"; done
+          export ANSIBLE_CONFIG="{{ upgrade_work_dir }}/ansible.cfg"
+          for attempt in 1 2; do
+            echo "=== Deploying the previous release (attempt ${attempt}) ===" >> "{{ upgrade_log_dir }}/base-deploy.log"
+            if ansible-playbook \
+                --inventory "{{ _upgrade_project_dir }}/inventory.yaml" \
+                --extra-vars '{"atmosphere_release_manifest": ""}' \
+                "{{ upgrade_base_dir }}/molecule/aio/converge.yml" 2>&1 | tee -a "{{ upgrade_log_dir }}/base-deploy.log"; then
+              exit 0
+            fi
+          done
+          exit 1
+        chdir: "{{ upgrade_base_dir }}"
+        executable: /bin/bash
+      changed_when: true
