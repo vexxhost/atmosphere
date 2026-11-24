@@ -37,6 +37,11 @@ _tempest_helm_values:
         fixed_network_name: public
       dashboard:
         dashboard_url: "http://horizon-int.openstack.svc.cluster.local"
+      # NOTE: The Heat plugin is installed but its tests are not run. When Heat
+      #       is disabled the chart still renders this section with
+      #       "<no value>" placeholders, which newer oslo.config refuses to
+      #       load, so drop the section and let the plugin skip its tests.
+      heat_plugin: null
       identity:
         v3_endpoint_type: internal
       image:
