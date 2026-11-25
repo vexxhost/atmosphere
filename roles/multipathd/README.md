@@ -8,13 +8,19 @@ all playbooks. For example, controllers and computes can have different lists:
 
 ```yaml
 # group_vars/controllers.yml
-multipathd_arrays: [netapp_ontap]
+multipathd_arrays: [netapp_ontap, pure_flasharray]
 ```
 
 ```yaml
 # group_vars/computes.yml
-multipathd_arrays: [netapp_ontap, pure_flasharray]
+multipathd_arrays: [pure_flasharray]
 ```
+
+Controllers need every array used by Cinder as well as any CSI array, because
+the Cinder volume and backup services attach volumes there. A host in both
+groups receives one list; with the default Ansible group ordering,
+`group_vars/controllers.yml` takes precedence, so that list must cover every
+array used on those hosts.
 
 A nonempty list enables device allow-listing: `find_multipaths` defaults to
 `"no"`, a catch-all **device** blacklist rejects unknown disks, and device
@@ -46,8 +52,9 @@ Validate volume attachment with every array used on a compute host.
 
 When `multipathd_arrays` is set, the role reads `multipath -ll` before writing
 the configuration and fails if an active map matches none of the selected
-profiles, so attached volumes from an omitted array are not cut off. Maps whose
-WWID is in `multipathd_blacklist_wwids` are ignored. Set
+profiles, so attached volumes from an omitted array are not cut off. The check
+only sees volumes attached during the run, so it does not replace listing every
+array. Maps whose WWID is in `multipathd_blacklist_wwids` are ignored. Set
 `multipathd_check_active_maps: false` only after detaching those volumes.
 
 To add a profile while keeping the built-in ones, combine them:

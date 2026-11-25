@@ -25,7 +25,9 @@ and persistent host NQNs as appropriate. Existing initiator names are
 preserved; duplicate iSCSI IQNs or NVMe NQNs among controllers fail validation.
 
 For SAN backends, put `netapp_ontap` in each controller's `multipathd_arrays`
-inventory variable, alongside every other array the node uses. The shared `multipathd`
+inventory variable, alongside every other array the node uses, including the
+arrays used by Cinder, whose volume and backup services attach volumes on the
+controllers. The shared `multipathd`
 role allows only those array devices, protecting local disks without a
 per-host WWID inventory. The same inventory applies to CSI and standalone
 OpenStack runs. See `roles/multipathd/README.md` and the CSI deployment guide.

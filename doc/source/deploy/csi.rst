@@ -252,17 +252,25 @@ SAN multipathing
 ================
 
 Set ``multipathd_arrays`` in inventory for the controllers. Include
-``netapp_ontap`` and every other array that the host needs. Compute nodes only
-need the arrays used by Cinder. For example, controllers that use ONTAP for
-Trident and computes that use Pure for Cinder can have these group variables:
+``netapp_ontap`` and every array used by Cinder. The Cinder volume and backup
+services run on the controllers and attach volumes there to copy images and
+create backups, so an array missing from the controller list loses
+multipathing for those attachments. Compute nodes only need the arrays used
+by Cinder. For example, controllers that use ONTAP for Trident and a
+deployment that uses Pure for Cinder can have these group variables:
 
 .. code-block:: yaml
 
     # group_vars/controllers.yml
-    multipathd_arrays: [netapp_ontap]
+    multipathd_arrays: [netapp_ontap, pure_flasharray]
 
     # group_vars/computes.yml
     multipathd_arrays: [pure_flasharray]
+
+A host that is both a controller and a compute receives a single list. With
+the default Ansible group ordering, ``group_vars/controllers.yml`` takes
+precedence over ``group_vars/computes.yml``, so the controller list must cover
+every array used on those hosts.
 
 The shared ``multipathd`` role sets ``find_multipaths no``, blocks unknown
 devices and allows only the selected array vendor/product matches. This
@@ -284,7 +292,8 @@ on existing hosts, check ``multipath -ll`` and ``multipath -v3 -d`` for local
 disks and each enabled array, and validate volume attachment on computes.
 When ``multipathd_arrays`` is set, the ``multipathd`` role also fails before
 changing the configuration if an active multipath map belongs to an array that
-is not listed.
+is not listed. This check only covers volumes attached during the run, so it
+does not replace listing every array the host uses.
 
 *********
 IBM Block
