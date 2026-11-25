@@ -60,9 +60,7 @@ spec:
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
-            {{- if and ( or (eq .Values.disable.primera false) (eq .Values.disable.alletra9000 false) ) ( or (eq .Values.disable.nimble true) (eq .Values.disable.alletra6000 true) ) }}
             - "--timeout=180s"
-            {{- end }}
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -120,6 +118,9 @@ spec:
             - name: CHAP_SECRET_NAMESPACE
               value: {{ .Release.Namespace }}
             {{- end }}
+            # GOMEMLIMIT set to 850MiB (~83% of this container's 1Gi memory limit) to run the Go GC before the hard limit (ESC-17696).
+            - name: GOMEMLIMIT
+              value: "850MiB"
           imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
           volumeMounts:
             - name: socket-dir

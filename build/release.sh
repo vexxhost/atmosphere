@@ -47,9 +47,18 @@ if [ "$CURRENT_RELEASE" = "$LATEST_RELEASE" ]; then
   LATEST_FLAG="true"
 fi
 
+# Versions with a pre-release suffix (such as 8.0.0-beta.1) are published as
+# pre-releases and never become the latest release.
+PRERELEASE_FLAG="false"
+if [[ "$VERSION" == *-* ]]; then
+  PRERELEASE_FLAG="true"
+  LATEST_FLAG="false"
+fi
+
 echo "Current version: $CURRENT_RELEASE"
 echo "Latest version: $LATEST_RELEASE"
 echo "Setting latest flag to: $LATEST_FLAG"
+echo "Setting prerelease flag to: $PRERELEASE_FLAG"
 
 # Generate release notes
 RELEASE_NOTES=$(reno report --no-show-source 2>/dev/null | pandoc -f rst -t gfm --wrap=none | grep -Ev '^(%|\(release-notes|# Release Notes)' | awk '/^## /{if(count==1) exit; if(count==0) {count++; next}} count==1')
@@ -60,7 +69,7 @@ echo "$RELEASE_NOTES"
 echo "=========================================================="
 
 # Final confirmation before making changes
-echo "Ready to release version $VERSION with latest=$LATEST_FLAG"
+echo "Ready to release version $VERSION with latest=$LATEST_FLAG prerelease=$PRERELEASE_FLAG"
 read -p "Proceed with release? [Y/n]: " CONFIRM
 if [[ "$CONFIRM" == "n" || "$CONFIRM" == "N" ]]; then
   echo "Release cancelled."
@@ -83,7 +92,7 @@ TEMP_NOTES_FILE=$(mktemp)
 echo "$RELEASE_NOTES" > "$TEMP_NOTES_FILE"
 
 # Create GitHub release with gh CLI
-gh release create v$VERSION --target $(git rev-parse HEAD) --notes-file "$TEMP_NOTES_FILE" --latest=$LATEST_FLAG
+gh release create v$VERSION --target $(git rev-parse HEAD) --notes-file "$TEMP_NOTES_FILE" --latest=$LATEST_FLAG --prerelease=$PRERELEASE_FLAG
 
 # Clean up temp file
 rm -f "$TEMP_NOTES_FILE"

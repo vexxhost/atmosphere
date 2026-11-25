@@ -216,6 +216,29 @@
   register: keystone_domains_result
   until: keystone_domains_result is not failed
 
+# NOTE: Each Keystone process reads the domain-specific configuration the first
+#       time it serves an identity request and skips the file of a domain that
+#       does not exist yet, so restart Keystone once a domain has been created.
+#       This is a task rather than a handler so the restart finishes before
+#       the rest of the deployment uses Keystone.
+- name: Restart Keystone to load the configuration of new domains # noqa: no-handler
+  when: keystone_domains_result is changed
+  run_once: true
+  kubernetes.core.k8s:
+    state: patched
+    api_version: apps/v1
+    kind: Deployment
+    name: keystone-api
+    namespace: openstack
+    definition:
+      spec:
+        template:
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/restartedAt: "{{ now(utc=true).isoformat() }}"
+    wait: true
+    wait_timeout: 600
+
 - name: Create Keystone identity providers
   run_once: true
   vexxhost.atmosphere.federation_idp:

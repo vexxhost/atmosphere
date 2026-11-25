@@ -10,6 +10,7 @@ disable:
   alletra9000: false
   alletraStorageMP: false
   b10000FileService: false
+  x10000FileService: false
 
 # For controlling automatic iscsi/multipath package installation
 disableNodeConformance: false
@@ -24,13 +25,19 @@ disableNodeGetVolumeStats: false
 disableNodeMonitor: false
 
 # The number of volumes the CSI controller will publish to an individual node
-maxVolumesPerNode: 100
+maxVolumesPerNode: 250
 
 # Disables host deletion by the CSP when no volumes are associated with the host
 disableHostDeletion: false
 
 # Disable pre-install hooks when the chart is rendered outside of Kubernetes, such as CI/CD systems
 disablePreInstallHooks: false
+
+# Set to true to generate a unique hash for storage backends that have hostname length limitations
+disableHostname: false
+
+# Max hostname length accepted by the storage backend when disableHostname is true
+maxHostnameLength: 31
 
 # imagePullPolicy applied for all hpe-csi-driver images
 imagePullPolicy: "IfNotPresent"
@@ -110,18 +117,19 @@ node:
 
 # Release images
 images:
-  csiNodeDriver: quay.io/hpestorage/csi-driver:v3.1.0
-  csiControllerDriver: quay.io/hpestorage/csi-driver:v3.1.0
-  nimbleCSP: quay.io/hpestorage/alletra-6000-and-nimble-csp:v3.1.0
-  primera3parCSP: quay.io/hpestorage/alletra-9000-primera-and-3par-csp:v3.1.0
-  b10000FileServiceCSP: quay.io/hpestorage/alletrastoragemp-b10000-nfs-csp:v1.1.0
-  nfsProvisioner: quay.io/hpestorage/nfs-provisioner:v3.0.9
-  csiExtensions: quay.io/hpestorage/csi-extensions:v1.2.10
-  csiVolumeGroupProvisioner: quay.io/hpestorage/volume-group-provisioner:v1.0.9
-  csiVolumeGroupSnapshotter: quay.io/hpestorage/volume-group-snapshotter:v1.0.9
-  csiVolumeMutator: quay.io/hpestorage/volume-mutator:v1.3.9
-  csiAttacher: registry.k8s.io/sig-storage/csi-attacher:v4.11.0
-  csiNodeDriverRegistrar: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.16.0
-  csiProvisioner: registry.k8s.io/sig-storage/csi-provisioner:v6.2.0
-  csiResizer: registry.k8s.io/sig-storage/csi-resizer:v2.1.0
-  csiSnapshotter: registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0
+  csiNodeDriver: quay.io/hpestorage/csi-driver:v3.3.1
+  csiControllerDriver: quay.io/hpestorage/csi-driver:v3.3.1
+  nimbleCSP: quay.io/hpestorage/alletra-6000-and-nimble-csp:v3.3.0
+  primera3parCSP: quay.io/hpestorage/alletra-9000-primera-and-3par-csp:v3.3.1
+  b10000FileServiceCSP: quay.io/hpestorage/alletrastoragemp-b10000-nfs-csp:v1.3.0
+  x10000FileServiceCSP: quay.io/hpestorage/alletrastoragemp-x10000-nfs-csp:v1.1.0
+  nfsProvisioner: quay.io/hpestorage/nfs-provisioner:v3.0.11
+  csiExtensions: quay.io/hpestorage/csi-extensions:v1.3.0
+  csiVolumeGroupProvisioner: quay.io/hpestorage/volume-group-provisioner:v1.1.0
+  csiVolumeGroupSnapshotter: quay.io/hpestorage/volume-group-snapshotter:v1.1.0
+  csiVolumeMutator: quay.io/hpestorage/volume-mutator:v1.4.0
+  csiAttacher: registry.k8s.io/sig-storage/csi-attacher:v4.12.0
+  csiNodeDriverRegistrar: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.17.0
+  csiProvisioner: registry.k8s.io/sig-storage/csi-provisioner:v6.3.0
+  csiResizer: registry.k8s.io/sig-storage/csi-resizer:v2.2.1
+  csiSnapshotter: registry.k8s.io/sig-storage/csi-snapshotter:v8.6.0

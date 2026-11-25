@@ -1,0 +1,97 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# NOTE: This scenario extends the "upgrade" scenario with a service that the
+#       base workload does not touch: a load balancer (Octavia) in front of
+#       the workload server. Heat is not covered: in CI its engine reaches
+#       Keystone through the public endpoint, whose self-signed certificate
+#       its containers do not trust, so it cannot create trusts or stacks.
+- name: Deploy the previous release and create the base workload
+  ansible.builtin.import_playbook: ../upgrade/prepare.yml
+
+- name: Create the extended workload
+  hosts: controllers[0]
+  become: true
+  vars_files:
+    - ../upgrade/vars.yml
+  tasks:
+    - name: Load the state of the workload
+      ansible.builtin.slurp:
+        src: "{{ upgrade_state_dir }}/state.json"
+      register: _upgrade_state_file
+      no_log: true
+
+    - name: Parse the state of the workload
+      ansible.builtin.set_fact:
+        _upgrade_state: "{{ _upgrade_state_file.content | b64decode | from_json }}"
+      no_log: true
+
+    # NOTE: CirrOS has no web server, so a BusyBox nc loop answers every
+    #       request with the boot ID, which also shows that the server was
+    #       not rebooted.
+    - name: Serve the boot ID over HTTP from the workload server
+      ansible.builtin.command:
+        cmd: >-
+          ssh -i {{ upgrade_state_dir }}/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+          -o ConnectTimeout=10 cirros@{{ _upgrade_state.address }} sudo sh -s
+        stdin: |
+          nohup sh -c 'while true; do printf "HTTP/1.0 200 OK\r\n\r\n%s\n" "$(cat /proc/sys/kernel/random/boot_id)" | nc -l -p 80; done' </dev/null >/dev/null 2>&1 &
+      changed_when: true
+
+    - name: Create the load balancer
+      ansible.builtin.command:
+        cmd: /usr/bin/python3 -
+        stdin: |
+          import json
+
+          import openstack
+
+          conn = openstack.connect(cloud="atmosphere")
+          server = conn.compute.find_server("upgrade", ignore_missing=False)
+          subnet = conn.network.find_subnet("upgrade", ignore_missing=False)
+          public = conn.network.find_network("public", ignore_missing=False)
+          group = conn.network.find_security_group("upgrade", ignore_missing=False)
+          conn.network.create_security_group_rule(
+              security_group_id=group.id, direction="ingress", ethertype="IPv4",
+              protocol="tcp", port_range_min=80, port_range_max=80,
+              remote_ip_prefix="0.0.0.0/0",
+          )
+          address = next(
+              a["addr"] for a in server.addresses["upgrade"] if a.get("OS-EXT-IPS:type") == "fixed"
+          )
+
+          def wait(lb):
+              return conn.load_balancer.wait_for_load_balancer(lb.id, status="ACTIVE", failures=["ERROR"], wait=1800)
+
+          lb = wait(conn.load_balancer.create_load_balancer(name="upgrade", vip_subnet_id=subnet.id))
+          listener = conn.load_balancer.create_listener(
+              name="upgrade", load_balancer_id=lb.id, protocol="HTTP", protocol_port=80
+          )
+          wait(lb)
+          pool = conn.load_balancer.create_pool(
+              name="upgrade", listener_id=listener.id, protocol="HTTP", lb_algorithm="ROUND_ROBIN"
+          )
+          wait(lb)
+          conn.load_balancer.create_member(pool, address=address, protocol_port=80, subnet_id=subnet.id)
+          wait(lb)
+          fip = conn.network.create_ip(floating_network_id=public.id, port_id=lb.vip_port_id)
+          print(json.dumps({"lb_id": lb.id, "lb_address": fip.floating_ip_address}))
+      register: _upgrade_extended
+      changed_when: true
+
+    - name: Save the state of the extended workload
+      ansible.builtin.copy:
+        dest: "{{ upgrade_state_dir }}/extended.json"
+        mode: "0600"
+        content: "{{ _upgrade_extended.stdout_lines | last }}"
+
+    - name: Check that the load balancer serves the workload
+      ansible.builtin.uri:
+        url: "http://{{ (_upgrade_extended.stdout_lines | last | from_json).lb_address }}/"
+        return_content: true
+      register: _upgrade_lb_response
+      retries: 60
+      delay: 10
+      until: >-
+        _upgrade_lb_response.status == 200 and
+        _upgrade_state.boot_id in _upgrade_lb_response.content

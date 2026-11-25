@@ -30,6 +30,7 @@ _rabbitmq_spec:
   rabbitmq:
     additionalConfig: |
       deprecated_features.permit.management_metrics_collection = true
+      deprecated_features.permit.transient_nonexcl_queues = true
       vm_memory_high_watermark.relative = 0.9
   replicas: 1
   resources:
@@ -44,3 +45,22 @@ _rabbitmq_spec:
     type: ClusterIP
   terminationGracePeriodSeconds: 15
   tls: {}
+
+# NOTE: RabbitMQ only supports rolling upgrades between specific release
+#       series (https://www.rabbitmq.com/docs/upgrade). Each key is a target
+#       series and lists the series that a running cluster can upgrade from.
+_rabbitmq_upgrade_paths:
+  "4.2": ["3.13", "4.0", "4.1", "4.2"]
+  "4.3": ["4.2", "4.3"]
+  "4.4": ["4.2", "4.3", "4.4"]
+
+# NOTE: Release series (for example "4.2") of the running cluster and of the
+#       image it is being deployed with, empty when the tag has no version.
+_rabbitmq_series_regex: '^[0-9]+\.[0-9]+'
+_rabbitmq_current_series: >-
+  {{ (_rabbitmq_cluster.resources[0].spec.image | vexxhost.kubernetes.docker_image('tag')
+      | regex_search(_rabbitmq_series_regex) | default('', true))
+     if _rabbitmq_cluster.resources | default([]) | length > 0 else '' }}
+_rabbitmq_target_series: >-
+  {{ (_rabbitmq_spec | combine(rabbitmq_spec, recursive=True)).image | vexxhost.kubernetes.docker_image('tag')
+     | regex_search(_rabbitmq_series_regex) | default('', true) }}
