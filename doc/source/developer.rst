@@ -75,3 +75,55 @@ automatically once the pull request merges.
 
 If you need to run a backport after a pull request has merged, you can do so
 by adding the labels and then adding a comment with the text ``/backport``.
+
+Upgrade tests
+=============
+
+The ``upgrade``, ``upgrade-multinode`` and ``upgrade-full`` Molecule scenarios
+test an upgrade from the previous release, modelled on OpenStack's grenade:
+
+* ``upgrade`` deploys the previous release on one node, creates a workload (a
+  server with a floating IP and a volume, and an application credential),
+  upgrades to the change under test while measuring how long the workload and
+  the Keystone API are unreachable, checks that the workload kept running with
+  its data, runs the Compute upgrade checks and Tempest.
+* ``upgrade-multinode`` does the same on three nodes and live-migrates the
+  workload to another compute node after the upgrade.
+* ``upgrade-full`` also puts a load balancer in front of the workload and
+  checks that it keeps serving the same server.
+
+The previous release is the newest ``stable/*`` branch that is older than the
+branch under test. Set ``ATMOSPHERE_UPGRADE_FROM`` to upgrade from another Git
+reference.
+
+These scenarios take a few hours each, so they do not run on every pull
+request. To run them in CI, for example before a release or when changing
+RabbitMQ, Percona XtraDB Cluster or Kubernetes, open a pull request that is not
+meant to be merged and adds the jobs to ``.zuul.yaml``:
+
+.. code-block:: yaml
+
+   - project:
+       templates:
+         - atmosphere-molecule-ubuntu-noble-jobs
+       check:
+         jobs:
+           - atmosphere-molecule-ubuntu-noble-aio-upgrade-openvswitch: &upgrade
+               dependencies: [atmosphere-release-manifest]
+               voting: false
+           - atmosphere-molecule-ubuntu-noble-aio-upgrade-ovn: *upgrade
+           - atmosphere-molecule-ubuntu-noble-multinode-upgrade-openvswitch: *upgrade
+           - atmosphere-molecule-ubuntu-noble-multinode-upgrade-ovn: *upgrade
+           - atmosphere-molecule-ubuntu-noble-aio-upgrade-full: *upgrade
+
+The jobs depend on ``atmosphere-release-manifest`` so that they deploy the
+images built for the pull request.
+
+To upgrade from another branch instead, for example to test an upgrade between
+two releases that are still being prepared, add this to each job:
+
+.. code-block:: yaml
+
+   vars:
+     molecule_environment:
+       ATMOSPHERE_UPGRADE_FROM: <branch>
