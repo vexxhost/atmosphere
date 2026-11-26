@@ -23,6 +23,50 @@ tests:
       - matchRegex:
           path: data["neutron-rpc-server.sh"]
           pattern: --config-file /etc/neutron/neutron_fwaas[.]conf
+      - matchRegex:
+          path: data["neutron-periodic-worker.sh"]
+          pattern: --config-file /etc/neutron/neutron_fwaas[.]conf
+      - matchRegex:
+          path: data["neutron-ovn-maintenance-worker.sh"]
+          pattern: --config-file /etc/neutron/neutron_fwaas[.]conf
+
+  - it: should mount neutron_fwaas.conf in the periodic and OVN maintenance workers when firewall_v2 is enabled
+    templates:
+      - templates/deployment-workers.yaml
+    set:
+      manifests:
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
+      network:
+        backend:
+          - ovn
+      conf:
+        neutron:
+          DEFAULT:
+            service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
+    asserts:
+      - hasDocuments:
+          count: 8
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: neutron-etc
+            mountPath: /etc/neutron/neutron_fwaas.conf
+            subPath: neutron_fwaas.conf
+            readOnly: true
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: neutron-etc
+            mountPath: /etc/neutron/neutron_fwaas.conf
+            subPath: neutron_fwaas.conf
+            readOnly: true
 
   - it: should mount neutron_fwaas.conf in neutron-rpc-server when firewall_v2 is enabled
     templates:
