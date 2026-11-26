@@ -15,6 +15,34 @@
 - name: Create user and assert it exists inside Keystone
   hosts: all
   tasks:
+    - name: Get Keystone Keycloak client
+      run_once: true
+      delegate_to: localhost
+      check_mode: true
+      changed_when: false
+      community.general.keycloak_client:
+        # Keycloak settings
+        auth_keycloak_url: "https://{{ keycloak_host }}"
+        auth_realm: master
+        auth_client_id: admin-cli
+        auth_username: admin
+        auth_password: "{{ keycloak_admin_password }}"
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+        # Client settings
+        realm: atmosphere
+        client_id: keystone
+      register: keycloak_keystone_client
+
+    # NOTE: A missing client returns empty scope lists, so these checks also
+    #       fail if the client does not exist.
+    - name: Assert Keystone Keycloak client has expected default scopes
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - "'kc-admin-api' in keycloak_keystone_client.existing.defaultClientScopes"
+          - "'profile' in keycloak_keystone_client.existing.defaultClientScopes"
+          - "'email' in keycloak_keystone_client.existing.defaultClientScopes"
+
     - name: Create Keycloak user
       run_once: true
       delegate_to: localhost
