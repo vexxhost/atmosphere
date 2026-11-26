@@ -67,6 +67,30 @@
   kubernetes.core.k8s:
     template: configmap-openid-metadata.yml.j2
 
+# NOTE: Keycloak 26.8.2+ only accepts Admin REST API tokens that carry the
+#       built-in "kc-admin-api" client scope. Older servers do not have it, so
+#       look it up first. Check mode makes this a read-only lookup: the scope
+#       is returned in "end_state" when it exists, and nothing is created.
+- name: Check for the Keycloak Admin API client scope
+  run_once: true
+  check_mode: true
+  changed_when: false
+  community.general.keycloak_clientscope:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Client scope settings
+    realm: "{{ item.keycloak_realm }}"
+    name: kc-admin-api
+  register: _keystone_keycloak_admin_api_scope
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: Create Keycloak clients
   no_log: true
   run_once: true
@@ -92,6 +116,29 @@
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
+
+- name: Assign Keycloak Admin API scope to Keystone client
+  no_log: true
+  run_once: true
+  community.general.keycloak_client:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.item.keycloak_server_url }}"
+    auth_realm: "{{ item.item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.item.keycloak_admin_user }}"
+    auth_password: "{{ item.item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ item.item.keycloak_realm }}"
+    client_id: "{{ item.item.keycloak_client_id }}"
+    default_client_scopes:
+      - kc-admin-api
+    # NOTE: "patch" only adds missing scopes and keeps the existing ones.
+    client_scopes_behavior: patch
+  loop: "{{ _keystone_keycloak_admin_api_scope.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.end_state | length > 0
 
 - name: Assign realm-management roles to service account
   no_log: true
