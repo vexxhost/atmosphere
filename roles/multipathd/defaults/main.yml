@@ -20,4 +20,31 @@
 #
 #               See: https://bugs.launchpad.net/kolla-ansible/+bug/1982777
 multipathd_user_friendly_names: false
+# Arrays whose LUNs this host can access. An empty list keeps the legacy policy.
+#
+# multipathd_arrays:
+#   - netapp_ontap
+#   - pure_flasharray
+multipathd_arrays: []
+
+# Array profiles with vendor/product matches and optional device settings.
+#
+# multipathd_array_profiles: "{{ _multipathd_array_profiles }}"
+multipathd_array_profiles: "{{ _multipathd_array_profiles }}"
+
+# Host-wide path discovery policy; selected arrays enable device allow-listing.
+#
+# multipathd_find_multipaths: "yes"
+multipathd_find_multipaths: "{{ (multipathd_arrays | length > 0) | ternary('no', 'yes') }}"
+
+# Local disk WWIDs to exclude from multipath mapping on this host.
+#
+# multipathd_blacklist_wwids:
+#   - "3600508b1001c5e8f0000000000000001"
+multipathd_blacklist_wwids: []
+
+# Fail before applying selected arrays if an active map would be blocked.
+#
+# multipathd_check_active_maps: true
+multipathd_check_active_maps: true
 multipathd_repository: "ppa:vexxhost/backports"
