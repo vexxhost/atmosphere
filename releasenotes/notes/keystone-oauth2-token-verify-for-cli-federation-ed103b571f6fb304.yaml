@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    The Keystone Apache configuration for the federation
+    ``/v3/OS-FEDERATION/identity_providers/<domain>/protocols/openid/auth``
+    endpoint now uses ``mod_auth_oauth2`` with an explicit
+    ``OAuth2TokenVerify jwks_uri`` pointing at the per-domain Keycloak
+    realm, replacing the previous generic ``AuthType oauth20``
+    configuration. Apache validates JWT access tokens presented by the
+    OpenStack CLI through the realm's JSON Web Key Set (JWKS) endpoint,
+    allowing each Keystone domain to trust tokens issued by its own
+    Keycloak realm.
