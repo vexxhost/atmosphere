@@ -42,6 +42,18 @@ keepalived_interface: "{{ undef(hint='You must specify a Keepalived virtual IP i
 keepalived_vrid: 51
 
                                                                    # ]]]
+# .. envvar:: keepalived_lower_prio_no_advert [[[
+#
+# Suppress responses to lower-priority VRRP advertisements. Consider enabling
+# this on an affected daemon (including 2.2.8) when received VRRP traffic delays
+# master advertisements and healthy backups unexpectedly become master.
+# Confirm the version-specific behavior and validate failover before enabling.
+# Leave false for stable deployments; resolve duplicate VRIDs separately.
+#
+# keepalived_lower_prio_no_advert: true
+keepalived_lower_prio_no_advert: false
+
+                                                                   # ]]]
 
 keepalived_pod_dependency:
   openvswitch:

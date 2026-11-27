@@ -1,0 +1,46 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Install discovery recovery helpers on the application hosts
+  ansible.builtin.include_tasks: install.yml
+
+- name: Suppress NFD publication with a bounded recovery watchdog
+  delegate_to: "{{ kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group | default('controllers')][0]) }}"
+  changed_when: atmosphere_nfd_protection.rc == 0 and (atmosphere_nfd_protection.stdout | from_json).changed
+  ansible.builtin.command:
+    argv:
+      - "{{ hostvars[kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group | default('controllers')][0])].ansible_facts.python.executable | default('/usr/bin/python3') }}"
+      - /var/lib/atmosphere/kubernetes-upgrade/discovery.py
+      - prepare
+      - --kind
+      - nfd
+      - --namespace
+      - "{{ node_feature_discovery_helm_release_namespace | default('monitoring') }}"
+      - --name
+      - "{{ atmosphere_kubernetes_upgrade_nfd_configmap }}"
+      - --prefix
+      - "{{ atmosphere_kubernetes_upgrade_nfd_pod_prefix }}"
+      - --timeout
+      - "{{ _atmosphere_kubernetes_upgrade_discovery_timeout }}"
+  register: atmosphere_nfd_protection
+
+- name: Protect Percona discovery without restarting HAProxy
+  delegate_to: "{{ item }}"
+  changed_when: atmosphere_percona_protection.rc == 0 and (atmosphere_percona_protection.stdout | from_json).changed
+  ansible.builtin.command:
+    argv:
+      - "{{ hostvars[item].ansible_facts.python.executable | default('/usr/bin/python3') }}"
+      - /var/lib/atmosphere/kubernetes-upgrade/discovery.py
+      - prepare
+      - --kind
+      - percona
+      - --namespace
+      # These identities are owned by the bundled Percona role.
+      - openstack
+      - --prefix
+      - percona-xtradb-haproxy-
+      - --timeout
+      - "{{ _atmosphere_kubernetes_upgrade_discovery_timeout }}"
+  loop: "{{ _atmosphere_kubernetes_upgrade_discovery_hosts }}"
+  register: atmosphere_percona_protection
