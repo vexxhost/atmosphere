@@ -283,7 +283,7 @@
                 summary: 'Octavia load balancer has multiple MASTER Amphorae',
                 description: 'Load balancer with ID {{ $labels.loadbalancer_id }} has multiple MASTER Amphorae for more then 15 minutes.',
               },
-              expr: 'count by(loadbalancer_id) (openstack_loadbalancer_amphora_status{role="MASTER"}) > 1',
+              expr: 'count by(loadbalancer_id) (openstack_loadbalancer_amphora_status{role="MASTER",status!="DELETED"}) > 1',
               'for': '15m',
               labels: {
                 severity: 'P3',
