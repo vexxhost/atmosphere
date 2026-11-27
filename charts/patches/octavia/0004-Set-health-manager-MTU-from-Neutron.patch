@@ -1,0 +1,59 @@
+Subject: [PATCH] Set the Octavia health manager MTU from Neutron
+
+Read the health manager port's network MTU during pod initialization and
+set it as the OVS mtu_request. Keep DHCP option 26 as provided by Neutron
+without introducing an independent Helm override.
+
+diff --git a/octavia/templates/bin/_octavia-health-manager-get-port.sh.tpl b/octavia/templates/bin/_octavia-health-manager-get-port.sh.tpl
+index fbe8f6ad1..0735111a2 100644
+--- a/octavia/templates/bin/_octavia-health-manager-get-port.sh.tpl
++++ b/octavia/templates/bin/_octavia-health-manager-get-port.sh.tpl
+@@ -21,8 +21,16 @@ set -ex
+ HOSTNAME=$(hostname -s)
+ PORTNAME=octavia-health-manager-port-$HOSTNAME
+ 
+-HM_PORT_ID=$(openstack port show $PORTNAME -c id -f value)
+-HM_PORT_MAC=$(openstack port show $PORTNAME -c mac_address -f value)
+-
+-echo $HM_PORT_ID > /tmp/pod-shared/HM_PORT_ID
+-echo $HM_PORT_MAC > /tmp/pod-shared/HM_PORT_MAC
++HM_PORT_ID=$(openstack port show "$PORTNAME" -c id -f value)
++HM_PORT_MAC=$(openstack port show "$PORTNAME" -c mac_address -f value)
++HM_NETWORK_ID=$(openstack port show "$PORTNAME" -c network_id -f value)
++HM_PORT_MTU=$(openstack network show "$HM_NETWORK_ID" -c mtu -f value)
++
++if ! [[ $HM_PORT_MTU =~ ^[1-9][0-9]{1,4}$ ]] || (( HM_PORT_MTU < 68 || HM_PORT_MTU > 65535 )); then
++    echo "Invalid Octavia management network MTU: $HM_PORT_MTU" >&2
++    exit 1
++fi
++
++printf '%s\n' "$HM_PORT_ID" > /tmp/pod-shared/HM_PORT_ID
++printf '%s\n' "$HM_PORT_MAC" > /tmp/pod-shared/HM_PORT_MAC
++printf '%s\n' "$HM_PORT_MTU" > /tmp/pod-shared/HM_PORT_MTU
+diff --git a/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl b/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl
+index 0317c3d33..da2a33be5 100644
+--- a/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl
++++ b/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl
+@@ -20,16 +20,18 @@ set -ex
+ 
+ HM_PORT_ID=$(cat /tmp/pod-shared/HM_PORT_ID)
+ HM_PORT_MAC=$(cat /tmp/pod-shared/HM_PORT_MAC)
++HM_PORT_MTU=$(cat /tmp/pod-shared/HM_PORT_MTU)
+ 
+ ovs-vsctl --no-wait show
+ 
+ ovs-vsctl --may-exist add-port br-int o-hm0 \
+         -- set Interface o-hm0 type=internal \
+         -- set Interface o-hm0 external-ids:iface-status=active \
+-        -- set Interface o-hm0 external-ids:attached-mac=$HM_PORT_MAC \
+-        -- set Interface o-hm0 external-ids:iface-id=$HM_PORT_ID \
+-        -- set Interface o-hm0 external-ids:skip_cleanup=true
++        -- set Interface o-hm0 external-ids:attached-mac="$HM_PORT_MAC" \
++        -- set Interface o-hm0 external-ids:iface-id="$HM_PORT_ID" \
++        -- set Interface o-hm0 external-ids:skip_cleanup=true \
++        -- set Interface o-hm0 mtu_request="$HM_PORT_MTU"
+ 
+-ip link set dev o-hm0 address $HM_PORT_MAC
++ip link set dev o-hm0 address "$HM_PORT_MAC"
+ 
+ iptables -I INPUT -i o-hm0 -p udp --dport {{ .Values.conf.octavia.health_manager.bind_port }} -j ACCEPT
