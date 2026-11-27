@@ -250,6 +250,58 @@ tests:
               description: "Computed node memory utilization at 192.0.2.6:9100 is 95.00%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
 
+  # NodeUptimeExceeded - negative test (uptime below maintenance threshold)
+  - interval: 1m
+    input_series:
+      - series: 'node_time_seconds{instance="192.0.2.7:9100", job="node-exporter"}'
+        values: '8640000x70'
+      - series: 'node_boot_time_seconds{instance="192.0.2.7:9100", job="node-exporter"}'
+        values: '0x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeUptimeExceeded
+        exp_alerts: []
+
+  # NodeUptimeExceeded - P4 test (uptime above 180 days)
+  - interval: 1m
+    input_series:
+      - series: 'node_time_seconds{instance="192.0.2.8:9100", job="node-exporter"}'
+        values: '17280000x70'
+      - series: 'node_boot_time_seconds{instance="192.0.2.8:9100", job="node-exporter"}'
+        values: '0x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeUptimeExceeded
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              instance: "192.0.2.8:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node uptime: planned maintenance is overdue"
+              description: "Node 192.0.2.8:9100 uptime calculated from node_boot_time_seconds is 200 days, above the 180-day maintenance threshold. Normal operation is below 180 days between planned reboots. Schedule maintenance before uptime exceeds 365 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodeuptimeexceeded"
+
+  # NodeUptimeExceeded - P3 test (uptime above 365 days)
+  - interval: 1m
+    input_series:
+      - series: 'node_time_seconds{instance="192.0.2.9:9100", job="node-exporter"}'
+        values: '34560000x40'
+      - series: 'node_boot_time_seconds{instance="192.0.2.9:9100", job="node-exporter"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: NodeUptimeExceeded
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.9:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node uptime: planned maintenance is overdue"
+              description: "Node 192.0.2.9:9100 uptime calculated from node_boot_time_seconds is 400 days, above the 365-day maintenance threshold. Normal operation is below 180 days between planned reboots. Schedule a maintenance window to reboot the node."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodeuptimeexceeded"
+
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
