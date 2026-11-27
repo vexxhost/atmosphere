@@ -46,6 +46,13 @@ _keycloak_helm_values:
         secretKeyRef:
           key: db-password
           name: keycloak-externaldb
+    # NOTE(mnaser): Disable the accelerated Base64 decoder to mitigate
+    #               CVE-2026-114938 (Java4Shell) until the Keycloak image ships
+    #               a fixed JDK.  The chart already sets "JAVA_OPTS_APPEND" from
+    #               its own ConfigMap, so this uses "JDK_JAVA_OPTIONS", which
+    #               the "java" launcher reads, to avoid replacing that value.
+    - name: JDK_JAVA_OPTIONS
+      value: -XX:-UseBASE64Intrinsics
   command:
     - /opt/keycloak/bin/kc.sh
     - --verbose
