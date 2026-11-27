@@ -39,10 +39,42 @@ the following command:
 Compute Node
 ============
 
-In order to evacuate a compute node, you will need to start by disabling the
-OpenStack compute service on the node.  This will prevent new workloads from
-being scheduled on the node.  To disable the OpenStack compute service, run
-the following command against the node you want to evacuate:
+Before initiating VM evacuation, it is important to understand the implications for
+different types of instances:
+
+---------------------------
+Boot from Volume Instances:
+---------------------------
+
+These instances have their root disks stored on a distributed storage system (e.g., Ceph).
+Evacuating these instances is safe and ensures that data integrity is maintained
+since the root volume is detached from the failing hypervisor and reattached to a
+new one.
+
+-------------------------------
+Non-Boot from Volume Instances:
+-------------------------------
+
+These instances have their root disks stored locally on the hypervisor's ephemeral
+storage. Evacuating these instances will result in the loss of all data stored
+in the root disk.
+
+.. admonition:: warning
+    Evacuation of non-boot-from-volume instances should be avoided unless data loss
+    is acceptable or has been mitigated through backups or other mechanisms.
+
+The evacuation process can be divided into two scenarios based on the state of
+the hypervisor: when the hypervisor is up or down. 
+
+The hypervisor is still up:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to evacuate a compute node with the hypervisor running, you will need to 
+start by disabling the OpenStack compute service on the node. This will prevent 
+new workloads from being scheduled on the node.  
+
+To disable the OpenStack compute service, run the following command against
+the node you want to evacuate:
 
 .. code-block:: console
 
@@ -88,6 +120,24 @@ reenable the OpenStack compute service by running the following command:
     VMs but it will not automatically move the VMs back to the node.  You will
     need to manually move the VMs back to the node if you want them to run
     there.
+
+The hypervisor is down and unreachable:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a hypervisor becomes unreachable, live evacuation will not function 
+as communication with the source host is no longer possible. As highlighted 
+above, attempting to evacuate virtual machines (VMs) that are not booted from 
+a volume will result in data loss. This happens because the system/root disk 
+will be recreated from the original image stored in Glance, rather than preserving 
+any changes made after deployment.
+
+This scenario commonly arises when a compute node becomes inoperable and needs 
+replacement. In such cases, migrating ephemeral workloads becomes necessary. 
+Users must understand that if there are no backups in place, all data in /root will likely be lost.
+
+We generally recommend using ephemeral storage only for workloads where critical or 
+long-lived data is not a requirement and performance is the primary concern. 
+A typical example of ephemeral resource usage is virtual machines deployed for CI/CD systems.
 
 *********************
 Renewing Certificates
