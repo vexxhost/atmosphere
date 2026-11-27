@@ -1,3 +1,4 @@
+# cspell:ignore mycompany
 # The GroupName here is used to identify your company or business unit that
 # created this webhook.
 # For example, this may be "acme.mycompany.com".
@@ -7,6 +8,7 @@
 # This group name should be **unique**, hence using your own company's domain
 # here is recommended.
 groupName: acme.mycompany.com
+replicaCount: 1
 
 certManager:
   namespace: cert-manager
@@ -18,31 +20,80 @@ servingCertificate:
   duration: "8760h"
 
 image:
-  repository: ghcr.io/luisico/cert-manager-webhook-infoblox-wapi
-  tag: 1.5
+  repository: ghcr.io/sarg3nt/cert-manager-webhook-infoblox-wapi
+  # Override the image tag whose default is the chart appVersion.
+  tag: ""
   pullPolicy: IfNotPresent
+
+# Optionally specify image pull secrets for private registries
+imagePullSecrets: []
+# - name: my-registry-secret
 
 nameOverride: ""
 fullnameOverride: ""
 
+# Annotations to add to the pod
+podAnnotations: {}
+
+# Used if loading the secret from a file on disk.
+secretVolume:
+  hostPath: ""
+  # hostPath: /etc/secrets/secrets.json
+
 service:
   type: ClusterIP
   port: 443
+  # Annotations to add to the service
+  annotations: {}
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# Resource limits and requests for the webhook container
+# We recommend setting these for production deployments
+resources:
+  {}
   # limits:
-  #  cpu: 100m
-  #  memory: 128Mi
+  #   cpu: 100m
+  #   memory: 128Mi
   # requests:
-  #  cpu: 100m
-  #  memory: 128Mi
+  #   cpu: 50m
+  #   memory: 64Mi
 
 nodeSelector: {}
 
 tolerations: []
 
 affinity: {}
+
+# Topology spread constraints for pod distribution across zones/nodes
+# https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+topologySpreadConstraints: []
+# - maxSkew: 1
+#   topologyKey: topology.kubernetes.io/zone
+#   whenUnsatisfiable: ScheduleAnyway
+#   labelSelector:
+#     matchLabels:
+#       app: cert-manager-webhook-infoblox-wapi
+
+# Pod Disruption Budget for high availability
+podDisruptionBudget:
+  enabled: false
+  # minAvailable: 1
+  # maxUnavailable: 1
+
+# ServiceMonitor for Prometheus Operator
+serviceMonitor:
+  enabled: false
+  # namespace: monitoring
+  # interval: 30s
+  # scrapeTimeout: 10s
+  # additionalLabels: {}
+
+# NetworkPolicy to restrict egress traffic
+networkPolicy:
+  enabled: false
+  # egressRules:
+  #   - to:
+  #       - ipBlock:
+  #           cidr: 10.0.0.0/8  # Your Infoblox server CIDR
+  #     ports:
+  #       - protocol: TCP
+  #         port: 443
